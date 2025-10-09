@@ -137,20 +137,7 @@ const SimpleHomePage = () => {
               transition={{ duration: 0.7 }}
               className="order-1 md:order-2"
             >
-              {/* <div className="relative">
-                <div className="absolute -top-6 -right-6 bg-primary text-white px-6 py-3 rounded-lg shadow-lg transform rotate-3">
-                  <span className="block text-sm font-medium">Save Extra</span>
-                  <span className="block text-3xl font-bold">₹100 OFF</span>
-                </div>
-                <div className="bg-white p-8 rounded-3xl shadow-2xl">
-                  <img
-                    src={Delivery}
-                    alt="Delivery van"
-                    className="rounded-2xl w-full"
-                    style={{ minHeight: "350px", objectFit: "cover", minWidth: "320px" }}
-                  />
-                </div>
-              </div> */}
+              
 
 
 
