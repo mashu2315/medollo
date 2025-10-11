@@ -10,7 +10,7 @@ const PrescriptionsPage = () => {
   const navigate = useNavigate();
   const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, success, error
 
-  // Past prescriptions (demo data)
+  // Past prescriptions 
   const pastPrescriptions = [
     { 
       id: 1, 

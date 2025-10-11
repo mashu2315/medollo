@@ -1,4 +1,4 @@
-// src/components/FlaskConicalIcon.js
+
 import React from 'react';
 
 const FlaskConicalIcon = ({ className }) => (
