@@ -96,7 +96,8 @@ const SimpleHomePage = () => {
       <div className="min-h-screen relative">
         <AnimatedBackground />
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-[#f8f9fa] to-[#e9ecef] py-12 md:py-20">
+      {/* <section className="bg-gradient-to-r from-[#f8f8fa] to-[#e9ecef] py-12 md:py-20"> */}
+        <section className="py-12 md:py-20">
         <div className="container-custom">
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <motion.div
