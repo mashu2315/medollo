@@ -59,6 +59,7 @@ const ProductsPage = () => {
 
         // Process categories
         const brands = [...new Set(data.map((b) => b.brand_name))];
+        
         const organizedCategories = [
           { id: "all", name: "All Products", type: "special" },
           { id: "popular", name: "Popular Brands", type: "special" },
@@ -612,7 +613,6 @@ const ProductsPage = () => {
                         className="bg-white rounded-lg shadow-md overflow-hidden"
                       >
                         <Link
-                          to={`/products/${product.id}`}
                           className="block relative"
                         >
                           <div className="aspect-w-1 aspect-h-1">
@@ -776,7 +776,8 @@ const ProductsPage = () => {
                     ))}
                   </AnimatePresence>
                 </div>
-              ) : (
+              )
+               : (
                 // No products found
                 <div className="bg-white p-8 rounded-lg text-center">
                   <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -802,7 +803,8 @@ const ProductsPage = () => {
                     Reset Filters
                   </button>
                 </div>
-              )}
+              )
+              }
 
               {/* Pagination - only show when there are products and more than one page */}
               {products.length > 0 && totalPages > 1 && (

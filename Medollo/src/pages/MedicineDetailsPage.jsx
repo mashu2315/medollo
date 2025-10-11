@@ -113,7 +113,7 @@ const MedicineDetailsPage = () => {
     <div className="max-w-5xl mx-auto mt-8 p-8 bg-white rounded-xl shadow-2xl">
       {/* Back button */}
       <button
-        onClick={() => navigate("/")}
+        onClick={() => navigate("/products")}
         className="mb-6 flex items-center text-primary hover:text-primary/80 transition-colors font-medium"
       >
         <ArrowLeftIcon className="h-5 w-5 mr-2" /> Back to Search

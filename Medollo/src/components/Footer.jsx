@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import Medical from '../assets/medical.jpeg'
+import Medical from '../assets/med.gif'
 const Footer = () => {
   const categories = [
     { name: 'About Medollo', path: '/about' },

@@ -146,7 +146,8 @@ const SimpleHomePage = () => {
               <div className="relative flex justify-center lg:justify-end">
             <div className="relative">
               {/* Main delivery illustration */}
-              <div className="relative bg-gradient-to-br from-blue-100 to-green-100 dark:from-blue-900/30 dark:to-green-900/30 rounded-3xl p-8 shadow-2xl">
+              <div className="relative bg-gradient-to-br from-blue-100 to-green-100 dark:from-blue-900/30 dark:to-green-900/30 rounded-3xl p-8 shadow-2xl ">
+              <div className='absolute top-0 left-0 rounded-3xl -z-10 h-full w-full bg-white'></div>
                 <img
                   src={Delivery}
                   alt="Fast Medicine Delivery"
