@@ -26,6 +26,16 @@ const ProfilePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [orderHistory, setOrderHistory] = useState([]);
   
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  
   // Get the tab from URL query parameter if it exists
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -94,6 +104,86 @@ const ProfilePage = () => {
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // Clear error when user starts typing
+    if (passwordError) setPasswordError('');
+    if (passwordSuccess) setPasswordSuccess('');
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+    setIsChangingPassword(true);
+
+    // Validation
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      setPasswordError('All fields are required');
+      setIsChangingPassword(false);
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('New passwords do not match');
+      setIsChangingPassword(false);
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters long');
+      setIsChangingPassword(false);
+      return;
+    }
+
+    if (passwordData.currentPassword === passwordData.newPassword) {
+      setPasswordError('New password must be different from current password');
+      setIsChangingPassword(false);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/users/password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setPasswordSuccess('Password changed successfully!');
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        // Clear success message after 5 seconds
+        setTimeout(() => {
+          setPasswordSuccess('');
+        }, 5000);
+      } else {
+        setPasswordError(data.message || 'Failed to change password');
+      }
+    } catch (error) {
+      console.error('Password change error:', error);
+      setPasswordError('Network error. Please try again.');
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   if (isLoading) {
@@ -407,14 +497,40 @@ const ProfilePage = () => {
                         Change Password
                       </h3>
                       
-                      <form className="space-y-4">
+                      {/* Success Message */}
+                      {passwordSuccess && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-green-50 border-l-4 border-green-500 p-4 mb-4"
+                        >
+                          <p className="text-green-700 text-sm">{passwordSuccess}</p>
+                        </motion.div>
+                      )}
+                      
+                      {/* Error Message */}
+                      {passwordError && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-red-50 border-l-4 border-red-500 p-4 mb-4"
+                        >
+                          <p className="text-red-700 text-sm">{passwordError}</p>
+                        </motion.div>
+                      )}
+                      
+                      <form onSubmit={handleChangePassword} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
                             <input 
                               type="password"
+                              name="currentPassword"
+                              value={passwordData.currentPassword}
+                              onChange={handlePasswordChange}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
                               placeholder="••••••••"
+                              required
                             />
                           </div>
                           
@@ -424,8 +540,13 @@ const ProfilePage = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
                             <input 
                               type="password"
+                              name="newPassword"
+                              value={passwordData.newPassword}
+                              onChange={handlePasswordChange}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
                               placeholder="••••••••"
+                              required
+                              minLength={6}
                             />
                           </div>
                           
@@ -433,18 +554,33 @@ const ProfilePage = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
                             <input 
                               type="password"
+                              name="confirmPassword"
+                              value={passwordData.confirmPassword}
+                              onChange={handlePasswordChange}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
                               placeholder="••••••••"
+                              required
                             />
                           </div>
                         </div>
                         
                         <div className="flex justify-end">
                           <button 
-                            type="button"
-                            className="bg-primary text-white py-2 px-6 rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+                            type="submit"
+                            disabled={isChangingPassword}
+                            className={`bg-primary text-white py-2 px-6 rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 ${
+                              isChangingPassword ? 'opacity-70 cursor-not-allowed' : ''
+                            }`}
                           >
-                            Update Password
+                            {isChangingPassword ? (
+                              <div className="flex items-center">
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Updating...
+                              </div>
+                            ) : 'Update Password'}
                           </button>
                         </div>
                       </form>

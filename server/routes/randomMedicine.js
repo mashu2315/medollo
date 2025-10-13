@@ -12,12 +12,12 @@ router.get('/med', async (req, res) => {
     const placeholderImage = "https://placehold.co/160x160/FEE2E2/DC2626?text=No+Image";
 
     const matchStage = {
-      'medicines.image_url': { 
-        $exists: true, 
-        $ne: "", 
-        $nin: [placeholderImage]   // filter out placeholder
+      'medicines.image_url': {
+        $exists: true,
+        $ne: null,
+        $nin: ["", placeholderImage]  // exclude empty strings & placeholder
       },
-      ...(category && { 'medicines.category': category }) // optional category filter
+      ...(category && { 'medicines.category': category })
     };
 
     const randomMedicines = await Brand.aggregate([
@@ -45,12 +45,19 @@ router.get('/med', async (req, res) => {
       }
     ]);
 
-    console.log(`Random results: ${randomMedicines.length} medicines found`);
-    res.json(randomMedicines);
+    // Double-check filtering in case any null slips through (safety net)
+    const filteredMedicines = randomMedicines.filter(
+      m => m.image_url && m.image_url.trim() !== '' && m.image_url !== placeholderImage
+    );
+
+    console.log(`✅ Random results: ${filteredMedicines.length} medicines found`);
+    res.json(filteredMedicines);
+
   } catch (err) {
-    console.error('Error in random medicines:', err.message);
+    console.error('❌ Error in random medicines:', err.message);
     res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 });
+
 
 module.exports = router;

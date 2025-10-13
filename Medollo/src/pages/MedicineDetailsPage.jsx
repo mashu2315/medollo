@@ -129,9 +129,9 @@ const MedicineDetailsPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Image + controls */}
         <div className="flex flex-col items-center md:col-span-1">
-          {details.image_url ? (
+          {(details.image_url || details.image) ? (
             <img
-              src={details.image_url}
+              src={details.image_url || details.image}
               alt={details.name}
               className="w-40 h-auto object-cover rounded-lg shadow-md mb-4"
               onError={(e) => {

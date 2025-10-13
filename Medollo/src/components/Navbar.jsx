@@ -81,7 +81,7 @@ const Navbar = () => {
         `${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/search/medicines?query=${value}`
       );
       const data = await res.json();
-      console.log(data);
+      
       setResults(data);
     } catch (err) {
       console.error("Search failed", err);
@@ -130,7 +130,7 @@ const Navbar = () => {
                       key={index}
                       // use _id or id from backend
                       onClick={() => {
-                        console.log("Navigating to:", item); // Debug
+                         // Debug
                         if (!item._id) {
                           console.error("Missing _id for item:", item);
                           return;

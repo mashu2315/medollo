@@ -158,12 +158,229 @@ const ProductsPage = () => {
   }, [searchTerm]);
 
   // Fetch products effect with pagination
+  // useEffect(() => {
+  //   setLoading(true);
+
+  //   setTimeout(() => {
+  //     let filteredProducts = [...allProducts];
+
+  //     // Filter by category
+  //     if (activeCategory !== "all") {
+        
+  //       if (activeCategory === "all") {
+  //         console.log(" Applying image URL-based sorting for All Products category");
+        
+  //         filteredProducts.sort((a, b) => {
+  //           const getImagePriority = (product) => {
+  //             const imageUrl = product.image;
+        
+  //             // 3 = lowest priority (null or placeholder)
+  //             if (
+  //               !imageUrl ||
+  //               imageUrl === null ||
+  //               imageUrl.trim() === "" ||
+  //               imageUrl === "https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine"
+  //             ) {
+  //               return 3;
+  //             }
+        
+  //             // 2 = medium priority (medplusmart.com)
+  //             if (imageUrl.startsWith("https://static2.medplusmart.com/")) {
+  //               return 2;
+  //             }
+        
+  //             // 1 = highest priority (valid normal images)
+  //             return 1;
+  //           };
+        
+  //           const priorityA = getImagePriority(a);
+  //           const priorityB = getImagePriority(b);
+        
+  //           // Sort by priority
+  //           if (priorityA !== priorityB) {
+  //             return priorityA - priorityB;
+  //           }
+        
+  //           // If same priority, preserve previous sort (like popularity, price, etc.)
+  //           return 0;
+  //         });
+        
+  //         // Optional: Debugging logs
+  //         const debugSample = filteredProducts.slice(0, 10).map(p => ({
+  //           name: p.name,
+  //           image: p.image,
+  //           priority: (() => {
+  //             const img = p.image;
+  //             if (!img || img === "" || img === "https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine") return 3;
+  //             if (img.startsWith("https://static2.medplusmart.com/")) return 2;
+  //             return 1;
+  //           })()
+  //         }));
+        
+  //         console.log("✅ Sorted by image priority sample:", debugSample);
+  //       }
+        
+  //     }
+
+  //     // Filter by price range
+  //     filteredProducts = filteredProducts.filter(
+  //       (p) =>
+  //         (p.discountPrice || p.price) >= priceRange[0] &&
+  //         (p.discountPrice || p.price) <= priceRange[1]
+  //     );
+
+  //     // Filter by search term
+  //     if (searchTerm.trim()) {
+  //       const searchLower = searchTerm.toLowerCase().trim();
+  //       filteredProducts = filteredProducts.filter(
+  //         (p) =>
+  //           p.name.toLowerCase().includes(searchLower) ||
+  //           p.description.toLowerCase().includes(searchLower) ||
+  //           (p.manufacturer &&
+  //             p.manufacturer.toLowerCase().includes(searchLower)) ||
+  //           p.tags.some((tag) => tag && tag.toLowerCase().includes(searchLower))
+  //       );
+  //     }
+
+  //     // Sort products
+  //     switch (sortBy) {
+  //       case "price-low":
+  //         filteredProducts.sort(
+  //           (a, b) =>
+  //             (a.discountPrice || a.price) - (b.discountPrice || b.price)
+  //         );
+  //         break;
+  //       case "price-high":
+  //         filteredProducts.sort(
+  //           (a, b) =>
+  //             (b.discountPrice || b.price) - (a.discountPrice || a.price)
+  //         );
+  //         break;
+  //       case "rating":
+  //         filteredProducts.sort((a, b) => b.rating - a.rating);
+  //         break;
+  //       case "newest":
+  //         // Just shuffle for demo purposes, in a real app you'd sort by date
+  //         filteredProducts.sort(() => Math.random() - 0.5);
+  //         break;
+  //       case "popularity":
+  //       default:
+  //         filteredProducts.sort((a, b) => b.reviews - a.reviews);
+  //         break;
+  //     }
+
+  //     // Apply image URL-based sorting for "All Products" category
+  //     if (activeCategory === "all") {
+  //       console.log("🖼️ Applying image URL-based sorting for All Products category");
+  //       console.log("📊 Total products to sort:", filteredProducts.length);
+        
+  //       // Log some sample image URLs for debugging
+  //       const sampleImages = filteredProducts.slice(0, 10).map(p => ({
+  //         name: p.name,
+  //         image: p.image,
+  //         priority: p.image ? (p.image.startsWith('https://static2.medplusmart.com/') ? 2 : (p.image === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine' ? 3 : 1)) : 3
+  //       }));
+  //       console.log("🔍 Sample image URLs:", sampleImages);
+        
+  //       filteredProducts.sort((a, b) => {
+  //         const getImagePriority = (product) => {
+  //           // The processed data uses 'image' field, not 'image_url'
+  //           const imageUrl = product.image;
+            
+  //           // Null or empty image URLs get lowest priority (3)
+  //           if (!imageUrl || imageUrl === null || imageUrl === '' || imageUrl === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine') {
+  //             return 3;
+  //           }
+            
+  //           // Images starting with "@https://static2.medplusmart.com/medplusmart.com/" get middle priority (2)
+  //           if (imageUrl.startsWith('https://static2.medplusmart.com/medplusmart.com/')) {
+  //             return 2;
+  //           }
+            
+  //           // All other images get highest priority (1)
+  //           return 1;
+  //         };
+
+  //         const priorityA = getImagePriority(a);
+  //         const priorityB = getImagePriority(b);
+
+  //         // If priorities are different, sort by priority
+  //         if (priorityA !== priorityB) {
+  //           return priorityA - priorityB;
+  //         }
+
+  //         // If priorities are the same, maintain the existing sort order
+  //         // This preserves the current sorting (popularity, price, etc.)
+  //         return 0;
+  //       });
+
+  //       // Log sorting results for debugging
+  //       const priorityCounts = {
+  //         normal: 0,
+  //         medplusmart: 0,
+  //         null: 0
+  //       };
+        
+  //       filteredProducts.slice(0, 20).forEach((product, index) => {
+  //         const imageUrl = product.image;
+  //         if (!imageUrl || imageUrl === null || imageUrl === '' || imageUrl === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine') {
+  //           priorityCounts.null++;
+  //         } else if (imageUrl.startsWith('@https://static2.medplusmart.com/')) {
+  //           priorityCounts.medplusmart++;
+  //         } else {
+  //           priorityCounts.normal++;
+  //         }
+  //       });
+        
+  //       console.log("📊 Image sorting results (first 20 products):", priorityCounts);
+        
+  //       // Log the first few products after sorting to verify
+  //       const afterSortSample = filteredProducts.slice(0, 5).map(p => ({
+  //         name: p.name,
+  //         image: p.image,
+  //         priority: p.image ? (p.image.startsWith('@https://static2.medplusmart.com/') ? 2 : (p.image === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine' ? 3 : 1)) : 3
+  //       }));
+  //       console.log("✅ After sorting (first 5 products):", afterSortSample);
+  //     }
+
+  //     // Store total count for pagination
+  //     setFilteredProductsCount(filteredProducts.length);
+
+  //     // Calculate total pages
+  //     const calculatedTotalPages = Math.ceil(
+  //       filteredProducts.length / productsPerPage
+  //     );
+  //     setTotalPages(calculatedTotalPages);
+
+  //     // Reset to first page if filters change
+  //     if (currentPage > calculatedTotalPages) {
+  //       setCurrentPage(1);
+  //     }
+
+  //     // Paginate results
+  //     const startIndex = (currentPage - 1) * productsPerPage;
+  //     const paginatedProducts = filteredProducts.slice(
+  //       startIndex,
+  //       startIndex + productsPerPage
+  //     );
+
+  //     setProducts(paginatedProducts);
+  //     setLoading(false);
+  //   }, 300); // Faster response time
+  // }, [
+  //   activeCategory,
+  //   priceRange,
+  //   sortBy,
+  //   searchTerm,
+  //   currentPage,
+  //   allProducts,
+  // ]);
   useEffect(() => {
     setLoading(true);
 
     setTimeout(() => {
       let filteredProducts = [...allProducts];
-
+     
       // Filter by category
       if (activeCategory !== "all") {
         if (activeCategory === "popular") {
@@ -224,6 +441,134 @@ const ProductsPage = () => {
           filteredProducts.sort((a, b) => b.reviews - a.reviews);
           break;
       }
+      // Apply image URL-based sorting for "All Products" category
+      // if (activeCategory === "all") {
+      //   console.log(" Applying image URL-based sorting for All Products category");
+      //   console.log("📊 Total products to sort:", filteredProducts.length);
+        
+      //   // Log some sample image URLs for debugging
+      //   const sampleImages = filteredProducts.slice(0, 10).map(p => ({
+      //     name: p.name,
+      //     image: p.image,
+      //     priority: p.image ? (p.image.startsWith('@https://static2.medplusmart.com/') ? 2 : (p.image === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine' ? 3 : 1)) : 3
+      //   }));
+      //   console.log("🔍 Sample image URLs:", sampleImages);
+        
+      //   filteredProducts.sort((a, b) => {
+      //     const getImagePriority = (product) => {
+      //       // The processed data uses 'image' field, not 'image_url'
+      //       const imageUrl = product.image;
+            
+      //       // Null or empty image URLs get lowest priority (3)
+      //       if (!imageUrl || imageUrl === null || imageUrl === '' || imageUrl === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine') {
+      //         return 3;
+      //       }
+            
+      //       // Images starting with "@https://static2.medplusmart.com/medplusmart.com/" get middle priority (2)
+      //       if (imageUrl.startsWith('@https://static2.medplusmart.com/medplusmart.com/')) {
+      //         return 2;
+      //       }
+            
+      //       // All other images get highest priority (1)
+      //       return 1;
+      //     };
+
+      //     const priorityA = getImagePriority(a);
+      //     const priorityB = getImagePriority(b);
+
+      //     // If priorities are different, sort by priority
+      //     if (priorityA !== priorityB) {
+      //       return priorityA - priorityB;
+      //     }
+
+      //     // If priorities are the same, maintain the existing sort order
+      //     // This preserves the current sorting (popularity, price, etc.)
+      //     return 0;
+      //   });
+
+      //   // Log sorting results for debugging
+      //   const priorityCounts = {
+      //     normal: 0,
+      //     medplusmart: 0,
+      //     null: 0
+      //   };
+        
+      //   filteredProducts.slice(0, 20).forEach((product, index) => {
+      //     const imageUrl = product.image;
+      //     if (!imageUrl || imageUrl === null || imageUrl === '' || imageUrl === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine') {
+      //       priorityCounts.null++;
+      //     } else if (imageUrl.startsWith('@https://static2.medplusmart.com/')) {
+      //       priorityCounts.medplusmart++;
+      //     } else {
+      //       priorityCounts.normal++;
+      //     }
+      //   });
+        
+      //   console.log("📊 Image sorting results (first 20 products):", priorityCounts);
+        
+      //   // Log the first few products after sorting to verify
+      //   const afterSortSample = filteredProducts.slice(0, 5).map(p => ({
+      //     name: p.name,
+      //     image: p.image,
+      //     priority: p.image ? (p.image.startsWith('@https://static2.medplusmart.com/') ? 2 : (p.image === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine' ? 3 : 1)) : 3
+      //   }));
+      //   console.log("✅ After sorting (first 5 products):", afterSortSample);
+      // }
+      if (activeCategory === "all") {
+        console.log(" Applying image URL-based sorting for All Products category");
+       
+        
+      
+        filteredProducts.sort((a, b) => {
+          const getImagePriority = (product) => {
+            const imageUrl = product.image;
+      
+            // 3 = lowest priority (null or placeholder)
+            if (
+              !imageUrl ||
+              imageUrl === null ||
+              imageUrl.trim() === "" ||
+              imageUrl === "https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine"
+            ) {
+              return 3;
+            }
+      
+            // 2 = medium priority (medplusmart.com)
+            if (imageUrl.startsWith("https://static2.medplusmart.com/")) {
+              return 2;
+            }
+      
+            // 1 = highest priority (valid normal images)
+            return 1;
+          };
+      
+          const priorityA = getImagePriority(a);
+          const priorityB = getImagePriority(b);
+      
+          // Sort by priority
+          if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+          }
+      
+          // If same priority, preserve previous sort (like popularity, price, etc.)
+          return 0;
+        });
+      
+        // Optional: Debugging logs
+        const debugSample = filteredProducts.slice(0, 10).map(p => ({
+          name: p.name,
+          image: p.image,
+          priority: (() => {
+            const img = p.image;
+            if (!img || img === "" || img === "https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine") return 3;
+            if (img.startsWith("https://static2.medplusmart.com/")) return 0;
+            return 1;
+          })()
+        }));
+      
+        console.log("✅ Sorted by image priority sample:", debugSample);
+      }
+      
 
       // Store total count for pagination
       setFilteredProductsCount(filteredProducts.length);

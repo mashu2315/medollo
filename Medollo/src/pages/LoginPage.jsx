@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { EyeIcon, EyeSlashIcon, ArrowLeftIcon, LockClosedIcon, UserIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, ArrowLeftIcon, LockClosedIcon, UserIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
 import PageTransition from '../components/ui/PageTransition';
+import OTPVerification from '../components/ui/OTPVerification';
 import { useCart } from '../context/CartContext';
 
 const LoginPage = () => {
@@ -10,12 +11,15 @@ const LoginPage = () => {
   const location = useLocation();
   const { login } = useCart();
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [loginMethod, setLoginMethod] = useState('phone'); // 'email' or 'phone'
+  const [currentStep, setCurrentStep] = useState('form'); // 'form' or 'otp'
   
   // Get redirect location from state or URL params (if any)
   const params = new URLSearchParams(location.search);
@@ -30,60 +34,209 @@ const LoginPage = () => {
     }
   }, [message]);
 
-  const handleLogin = async (e) => {
-  e.preventDefault();
-  setError('');
-  setSuccessMessage('');
-  setIsLoading(true);
+  const handleSendOTP = async () => {
+    setError('');
+    setIsLoading(true);
 
-  if (!email || !password) {
-    setError('Please enter both email and password');
-    setIsLoading(false);
-    return;
-  }
+    if (!phone) {
+      setError('Please enter your phone number');
+      setIsLoading(false);
+      return;
+    }
 
-  if (!/\S+@\S+\.\S+/.test(email)) {
-    setError('Please enter a valid email address');
-    setIsLoading(false);
-    return;
-  }
+    if (!/^\d{10}$/.test(phone.replace(/[^0-9]/g, ''))) {
+      setError('Please enter a valid 10-digit phone number');
+      setIsLoading(false);
+      return;
+    }
 
-  try {
-    const response = await fetch(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const response = await fetch(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
 
-    const data = await response.json(); // await here as well
+      const data = await response.json();
 
-    if (response.ok) {
-      setSuccessMessage('Login successful! Redirecting...');
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      login(data.user);
-
-      setTimeout(() => {
-        setIsLoading(false);
-        navigate(from);
-      }, 1000);
-    } else {
-      setError(data.message || 'Login failed. Please check your credentials.');
+      if (response.ok) {
+        setCurrentStep('otp');
+        setSuccessMessage('OTP sent successfully!');
+      } else {
+        setError(data.message || 'Failed to send OTP');
+      }
+    } catch (err) {
+      console.error('Send OTP error:', err);
+      setError('Network error. Please check your connection and try again.');
+    } finally {
       setIsLoading(false);
     }
-  } catch (err) {
-    console.error('Login error:', err);
-    setError('Network error. Please check your connection and try again.');
-    setIsLoading(false);
-  }
-};
+  };
+
+  const handleVerifyOTP = async (otp) => {
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, otp }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccessMessage('Phone number verified successfully!');
+        // Proceed with login using phone
+        handleLoginWithPhone();
+      } else {
+        setError(data.message || 'Invalid OTP');
+      }
+    } catch (err) {
+      console.error('Verify OTP error:', err);
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setError('');
+    try {
+      const response = await fetch(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccessMessage('OTP resent successfully!');
+      } else {
+        setError(data.message || 'Failed to resend OTP');
+      }
+    } catch (err) {
+      console.error('Resend OTP error:', err);
+      setError('Network error. Please check your connection and try again.');
+    }
+  };
+
+  const handleLoginWithPhone = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccessMessage('Login successful! Redirecting...');
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        login(data.user);
+
+        setTimeout(() => {
+          setIsLoading(false);
+          navigate(from);
+        }, 1000);
+      } else {
+        setError(data.message || 'Login failed. Please check your credentials.');
+        setIsLoading(false);
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Network error. Please check your connection and try again.');
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMessage('');
+    setIsLoading(true);
+
+    if (loginMethod === 'phone') {
+      if (!phone || !password) {
+        setError('Please enter both phone number and password');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!/^\d{10}$/.test(phone.replace(/[^0-9]/g, ''))) {
+        setError('Please enter a valid 10-digit phone number');
+        setIsLoading(false);
+        return;
+      }
+
+      // For phone login, we need to verify OTP first
+      await handleSendOTP();
+      return;
+    } else {
+      if (!email || !password) {
+        setError('Please enter both email and password');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!/\S+@\S+\.\S+/.test(email)) {
+        setError('Please enter a valid email address');
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setSuccessMessage('Login successful! Redirecting...');
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          login(data.user);
+
+          setTimeout(() => {
+            setIsLoading(false);
+            navigate(from);
+          }, 1000);
+        } else {
+          setError(data.message || 'Login failed. Please check your credentials.');
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error('Login error:', err);
+        setError('Network error. Please check your connection and try again.');
+        setIsLoading(false);
+      }
+    }
+  };
 
 
 
   return (
     <PageTransition>
       <div className="bg-gradient-to-br from-white to-pink-50 min-h-screen flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 relative">
+        {currentStep === 'otp' ? (
+          <OTPVerification
+            phone={phone}
+            onVerify={handleVerifyOTP}
+            onResend={handleResendOTP}
+            onBack={() => setCurrentStep('form')}
+            isLoading={isLoading}
+            error={error}
+            successMessage={successMessage}
+          />
+        ) : (
+          <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 relative">
           {/* Back button */}
           <div className="absolute top-4 left-4">
             <button 
@@ -101,6 +254,32 @@ const LoginPage = () => {
             </div>
             <h2 className="text-2xl font-bold text-gray-800">Welcome Back</h2>
             <p className="mt-2 text-gray-600">Login to access your account</p>
+            
+            {/* Login Method Toggle */}
+            <div className="mt-4 flex bg-gray-100 rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => setLoginMethod('email')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  loginMethod === 'email'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Email
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginMethod('phone')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  loginMethod === 'phone'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Phone
+              </button>
+            </div>
           </div>
           
           {error && (
@@ -124,29 +303,53 @@ const LoginPage = () => {
           )}
           
           <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                  </svg>
+            {loginMethod === 'email' ? (
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                    </svg>
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
+                    placeholder="your.email@example.com"
+                  />
                 </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
-                  placeholder="your.email@example.com"
-                />
               </div>
-            </div>
+            ) : (
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <DevicePhoneMobileIcon className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
+                    placeholder="9876543210"
+                  />
+                </div>
+              </div>
+            )}
             
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
@@ -258,15 +461,16 @@ const LoginPage = () => {
             </div>
           </div>
           
-          <div className="text-center mt-8">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Link to="/signup" className="font-medium text-primary hover:text-primary-dark">
-                Sign up
-              </Link>
-            </p>
+            <div className="text-center mt-8">
+              <p className="text-sm text-gray-600">
+                Don't have an account?{' '}
+                <Link to="/signup" className="font-medium text-primary hover:text-primary-dark">
+                  Sign up
+                </Link>
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </PageTransition>
   );

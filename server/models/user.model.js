@@ -10,8 +10,9 @@ const UserSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: [true, 'Email is required'],
+      required: false,
       unique: true,
+      sparse: true,
       trim: true,
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, 'Please use a valid email address'],
@@ -24,8 +25,16 @@ const UserSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
+      required: [true, 'Phone number is required'],
+      unique: true,
       trim: true,
     },
+    isPhoneVerified: {
+      type: Boolean,
+      default: false,
+    },
+    phoneVerificationOTP: String,
+    phoneVerificationExpires: Date,
     address: {
       type: String,
       trim: true,
@@ -62,6 +71,20 @@ UserSchema.pre('save', async function (next) {
 // Method to check if entered password is correct
 UserSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Method to generate OTP for phone verification
+UserSchema.methods.generatePhoneVerificationOTP = function () {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+  this.phoneVerificationOTP = otp;
+  this.phoneVerificationExpires = Date.now() + 30 * 60 * 1000; // 30 minutes
+  return otp;
+};
+
+// Method to verify OTP
+UserSchema.methods.verifyPhoneOTP = function (otp) {
+  return this.phoneVerificationOTP === otp && 
+         this.phoneVerificationExpires > Date.now();
 };
 
 module.exports = mongoose.model('User', UserSchema);

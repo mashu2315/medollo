@@ -15,6 +15,7 @@ const { connectDB } = require("./config/db");
 const Brands = require("./models/Brand");
 const searchRoutes = require("./routes/search");
 const randomMedicines = require("./routes/randomMedicine");
+const medicineRoutes = require("./routes/medicines");
 // Initialize express app
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +38,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/user-medicines", userMedicineRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/random", randomMedicines);
+app.use("/api/medicines", medicineRoutes);
 app.use("/api/vendors", vendorRoutes);
 
 // Health check route

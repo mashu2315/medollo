@@ -13,7 +13,7 @@ const Brand = require('../models/Brand');
 router.get('/medicines', async (req, res) => {
   try {
     const { query } = req.query;
-    console.log('Search query:', query);
+   
 
     if (!query || query.trim() === '') {
       return res.status(200).json([]);
