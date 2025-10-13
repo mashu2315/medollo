@@ -240,7 +240,7 @@ exports.sendOTP = async (req, res) => {
     // Generate OTP
     console.log("Generating OTP for user:", user.phone);
     const otp = user.generatePhoneVerificationOTP();
-    
+    console.log("OTP",otp);
     console.log("OTP expires at:", new Date(user.phoneVerificationExpires));
     await user.save();
     console.log("User saved with OTP",otp);
@@ -330,16 +330,30 @@ exports.verifyOTP = async (req, res) => {
       });
     }
 
-    // Mark phone as verified
+    // Mark phone as verified and clear OTP fields
     user.isPhoneVerified = true;
     user.phoneVerificationOTP = undefined;
     user.phoneVerificationExpires = undefined;
     await user.save();
 
+    // Issue JWT so the user is logged in after OTP verification
+    const token = generateToken(user._id);
+
     res.status(200).json({
       success: true,
       message: 'Phone number verified successfully',
       isVerified: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        address: user.address,
+        avatarUrl: user.avatarUrl,
+        role: user.role,
+        isPhoneVerified: user.isPhoneVerified,
+      },
     });
   } catch (error) {
     res.status(500).json({

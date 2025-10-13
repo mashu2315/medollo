@@ -88,8 +88,19 @@ const LoginPage = () => {
 
       if (response.ok) {
         setSuccessMessage('Phone number verified successfully!');
-        // Proceed with login using phone
-        handleLoginWithPhone();
+        // If backend returns token/user, log the user in immediately
+        if (data.token && data.user) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          login(data.user);
+          setTimeout(() => {
+            setIsLoading(false);
+            navigate(from);
+          }, 800);
+        } else {
+          // Fallback: proceed with password login (legacy)
+          handleLoginWithPhone();
+        }
       } else {
         setError(data.message || 'Invalid OTP');
       }
