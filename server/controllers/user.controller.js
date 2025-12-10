@@ -3,9 +3,9 @@ const User = require('../models/user.model');
 // @desc    Update user profile
 // @route   PUT /api/users/profile
 // @access  Private
-exports.updateProfile = async (req, res) => {
+const updateProfile = async (req, res) => {
   try {
-    const { name, phone, address } = req.body;
+    const { name, phone, address, email } = req.body;
 
     // Find user
     const user = await User.findById(req.user.id);
@@ -21,7 +21,7 @@ exports.updateProfile = async (req, res) => {
     if (name) user.name = name;
     if (phone) user.phone = phone;
     if (address) user.address = address;
-
+    if(email) user.email = email;
     // Update avatar if name changed
     if (name) {
       user.avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
@@ -54,7 +54,7 @@ exports.updateProfile = async (req, res) => {
 // @desc    Change user password
 // @route   PUT /api/users/password
 // @access  Private
-exports.changePassword = async (req, res) => {
+const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
@@ -90,7 +90,7 @@ exports.changePassword = async (req, res) => {
 // @desc    Get all users (Admin only)
 // @route   GET /api/users
 // @access  Private/Admin
-exports.getUsers = async (req, res) => {
+const getUsers = async (req, res) => {
   try {
     const users = await User.find().select('-__v');
 
@@ -106,4 +106,60 @@ exports.getUsers = async (req, res) => {
       error: error.message,
     });
   }
+};
+
+// @desc    Delete user account
+// @route   DELETE /api/users/delete-account
+// @access  Private
+const deleteAccount = async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required to delete account',
+      });
+    }
+
+    // Find user with password
+    const user = await User.findById(req.user.id).select('+password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Verify password
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Incorrect password',
+      });
+    }
+
+    // Delete user account
+    await User.findByIdAndDelete(req.user.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Account deleted successfully',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
+module.exports = {
+  updateProfile,
+  changePassword,
+  getUsers,
+  deleteAccount
 };

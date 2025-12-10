@@ -9,7 +9,7 @@ import { useCart } from '../context/CartContext';
 const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useCart();
+  const { login,isLoggedIn  } = useCart();
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -27,12 +27,23 @@ const LoginPage = () => {
   const from = returnUrl || location.state?.from || '/';
   const message = location.state?.message || '';
 
+  useEffect(() => {
+  if (isLoggedIn) {
+    navigate('/'); // or whatever your dashboard route is
+  }
+}, [isLoggedIn, navigate]);
+
+
+
+
+  
   // Show message if redirected from another page
   useEffect(() => {
     if (message) {
       setError(message);
     }
   }, [message]);
+  
 
   const handleSendOTP = async () => {
     setError('');
@@ -267,7 +278,7 @@ const LoginPage = () => {
             <p className="mt-2 text-gray-600">Login to access your account</p>
             
             {/* Login Method Toggle */}
-            <div className="mt-4 flex bg-gray-100 rounded-lg p-1">
+            {/* <div className="mt-4 flex bg-gray-100 rounded-lg p-1">
               <button
                 type="button"
                 onClick={() => setLoginMethod('email')}
@@ -290,7 +301,7 @@ const LoginPage = () => {
               >
                 Phone
               </button>
-            </div>
+            </div> */}
           </div>
           
           {error && (

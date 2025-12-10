@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import {FaFacebook, FaTwitter, FaInstagram, FaLinkedin} from 'react-icons/fa';
 import Medical from '../assets/med.gif'
 const Footer = () => {
   const categories = [
@@ -28,19 +29,17 @@ const Footer = () => {
     { name: 'Devices', path: '/category/devices' },
     { name: 'Baby Products', path: '/category/baby-products' }
   ];
+  const socialLinks = [
+    { icon: <FaFacebook className="w-5 h-5" />, url: 'https://facebook.com' },
+    { icon: <FaTwitter className="w-5 h-5" />, url: 'https://twitter.com' },
+    { icon: <FaInstagram className="w-5 h-5" />, url: 'https://instagram.com' },
+    { icon: <FaLinkedin className="w-5 h-5" />, url: 'https://linkedin.com' }
+  ];
 
   return (
     <footer className="bg-darkblue text-white pt-12 pb-6">
       <div className="container-custom">
-        {/* Newsletter Subscription */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-        >
-         <h1 className=' text-center text-xl bg-secondary/90 rounded-xl px-6 md:p-2 mb-10 shadow-xl'>Subscribe Our News Letters</h1>
-        </motion.div>
+        
 
         {/* Footer Links */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
@@ -55,7 +54,7 @@ const Footer = () => {
             <p className="text-gray-400 mb-4">
               India's most trusted online pharmacy & healthcare platform. We deliver quality medicines and healthcare products at affordable prices.
             </p>
-            <div className="flex space-x-3">
+            {/* <div className="flex space-x-3">
               {['facebook', 'twitter', 'instagram', 'linkedin'].map((social) => (
                 <motion.a
                   key={social}
@@ -69,6 +68,20 @@ const Footer = () => {
                   <div className="w-5 h-5 text-white">
                     {social[0].toUpperCase()}
                   </div>
+                </motion.a>
+              ))}
+            </div> */}
+             <div className="flex space-x-3">
+              {socialLinks.map((social, index) => (
+                <motion.a
+                  key={index}
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.2, rotate: 5 }}
+                  className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center hover:bg-primary transition-colors"
+                >
+                  {social.icon}
                 </motion.a>
               ))}
             </div>

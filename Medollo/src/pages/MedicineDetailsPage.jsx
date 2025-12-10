@@ -1,6 +1,6 @@
 
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useMedicine } from "../context/MedicineContext";
 import { useCart } from "../context/CartContext";
@@ -8,29 +8,91 @@ import FlaskConicalIcon from "../components/FlaskConicalIcon";
 
 const MedicineDetailsPage = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const { selectedMedicine } = useMedicine();
   const { addToCart, isLoggedIn } = useCart();
   const [quantity, setQuantity] = useState(1);
+  const [medicine, setMedicine] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!selectedMedicine) {
+  useEffect(() => {
+    const fetchMedicineDetails = async () => {
+      try {
+        // Always fetch full details from API when we have an ID
+        // selectedMedicine is only used as initial/fallback data
+        if (id) {
+          setLoading(true);
+          const response = await fetch(
+            `${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/medicine-details/${id}`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data) {
+              console.log("Medicine details fetched:", data.data); // Debug log
+              setMedicine(data.data);
+            } else {
+              console.error("Medicine not found or invalid response:", data);
+              // Fallback to selectedMedicine if API fails
+              if (selectedMedicine) {
+                console.log("Using selectedMedicine as fallback:", selectedMedicine);
+                setMedicine(selectedMedicine);
+              }
+            }
+          } else {
+            console.error("Failed to fetch medicine:", response.status);
+            // Fallback to selectedMedicine if API fails
+            if (selectedMedicine) {
+              console.log("Using selectedMedicine as fallback:", selectedMedicine);
+              setMedicine(selectedMedicine);
+            }
+          }
+        } else if (selectedMedicine) {
+          // Only use selectedMedicine if we don't have an ID
+          setMedicine(selectedMedicine);
+        }
+      } catch (error) {
+        console.error("Error fetching medicine details:", error);
+        // Fallback to selectedMedicine if fetch fails
+        if (selectedMedicine && !medicine) {
+          setMedicine(selectedMedicine);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMedicineDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // Only re-fetch when id changes
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!medicine) {
     return (
       <div className="p-6 bg-yellow-50 border border-yellow-400 text-yellow-800 rounded-lg max-w-4xl mx-auto mt-10 text-center">
-        <h3 className="font-bold mb-2 text-lg">No Medicine Selected</h3>
+        <h3 className="font-bold mb-2 text-lg">Medicine Not Found</h3>
         <p className="text-sm text-gray-600 mb-4">
-          Please go back and select a medicine to view its details.
+          The medicine you're looking for could not be found.
         </p>
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/products")}
           className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 transition-colors"
         >
-          <ArrowLeftIcon className="h-4 w-4 mr-2" /> Back to Home
+          <ArrowLeftIcon className="h-4 w-4 mr-2" /> Back to Products
         </button>
       </div>
     );
   }
 
-  const details = selectedMedicine;
-  const suggestions = details.suggestions || [];
+  const details = medicine;
+  
+  const suggestions = [];
 
   // ---------- Helpers ----------
   const parseNumber = (v) => {
@@ -44,14 +106,10 @@ const MedicineDetailsPage = () => {
   const formatINR = (n) =>
     isNaN(n) ? "N/A" : new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(n);
 
-  // Try multiple possible keys that might contain prices
-  const mrp = parseNumber(details.mrp ?? details.MRP ?? details.mrp_value ?? details.mrpPrice ?? details.mrp_price ?? details.price);
-  const regularPrice = parseNumber(details.regularPrice ?? details.regular_price ?? details.price ?? details.regular);
-  const memberPrice = parseNumber(details.memberPrice ?? details.member_price ?? details.discountPrice ?? details.discount_price ?? details.salePrice);
-
-  // Select the effective per-unit price (prefer lowest valid price)
-  const candidatePrices = [memberPrice, parseNumber(details.discountPrice), regularPrice, mrp].filter((p) => !isNaN(p) && p > 0);
-  const effectivePrice = candidatePrices.length ? Math.min(...candidatePrices) : NaN;
+  // Use the backend data structure - mrp is already calculated by backend (10% higher than price)
+  const sellingPrice = parseNumber(details.price); // Selling price from backend
+  const mrp = parseNumber(details.mrp); // MRP already calculated by backend (10% higher)
+  const effectivePrice = sellingPrice;
 
   const totalMrp = isNaN(mrp) ? null : mrp * quantity;
   const totalEffective = isNaN(effectivePrice) ? null : effectivePrice * quantity;
@@ -59,31 +117,39 @@ const MedicineDetailsPage = () => {
 
   const savingsPerUnit = !isNaN(mrp) && !isNaN(effectivePrice) && mrp > effectivePrice ? (mrp - effectivePrice) : 0;
   const savingsTotal = savingsPerUnit * quantity;
-  const savingsPercent = (!isNaN(mrp) && mrp > 0 && savingsPerUnit > 0) ? Math.round((savingsPerUnit / mrp) * 100) : 0;
+  const savingsPercent = details.discount || 10; // Use discount from backend (defaults to 10%)
 
   // ---------- Handlers ----------
   const handleAddToCart = () => {
     if (!isLoggedIn) {
       navigate("/login", {
         state: {
-          from: `/medicine/${details._id || details.id || details.name}`,
+          from: `/medicine/${details.id}`,
           message: "Please log in to add medicines to your cart.",
         },
       });
       return;
     }
 
-    // Normalize product object: ensure id and normalized price fields
+    // Normalize product object for cart using backend data structure
     const normalized = {
-      ...details,
-      id: details.id || details._id || details.product_id || details.name,
-      price: !isNaN(regularPrice) ? regularPrice : (!isNaN(mrp) ? mrp : 0),
-      discountPrice: !isNaN(memberPrice) ? memberPrice : (!isNaN(details.discountPrice) ? parseNumber(details.discountPrice) : undefined),
-      mrp: !isNaN(mrp) ? mrp : undefined,
+      id: details.id,
+      name: details.name || details.productName,
+      image: details.image || details.imageUrl,
+      price: effectivePrice,
+      mrp: mrp,
+      discount: details.discount || 10,
+      brand: details.brand,
+      manufacturer: details.manufacturer,
+      composition: details.composition || details.compositionName,
+      molecules: details.molecules,
+      packSize: details.packSize,
+      productForm: details.productForm || details.productFormName,
+      prescriptionRequired: details.prescriptionRequired,
+      description: details.description || details.productLongDescription
     };
 
-    addToCart(normalized, quantity); // addToCart returns boolean in your context but we just call it here
-    // Optionally show a tiny UI confirmation here (toast / inline message)
+    addToCart(normalized, quantity);
   };
 
   const handleOrderNow = () => {
@@ -98,11 +164,20 @@ const MedicineDetailsPage = () => {
     }
 
     const normalized = {
-      ...details,
-      id: details.id || details._id || details.product_id || details.name,
-      price: !isNaN(regularPrice) ? regularPrice : (!isNaN(mrp) ? mrp : 0),
-      discountPrice: !isNaN(memberPrice) ? memberPrice : (!isNaN(details.discountPrice) ? parseNumber(details.discountPrice) : undefined),
-      mrp: !isNaN(mrp) ? mrp : undefined,
+      id: details.id,
+      name: details.name || details.productName,
+      image: details.image || details.imageUrl,
+      price: effectivePrice,
+      mrp: mrp,
+      discount: details.discount || 10,
+      brand: details.brand,
+      manufacturer: details.manufacturer,
+      composition: details.composition || details.compositionName,
+      molecules: details.molecules,
+      packSize: details.packSize,
+      productForm: details.productForm || details.productFormName,
+      prescriptionRequired: details.prescriptionRequired,
+      description: details.description || details.productLongDescription
     };
 
     addToCart(normalized, quantity);
@@ -110,7 +185,8 @@ const MedicineDetailsPage = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto mt-8 p-8 bg-white rounded-xl shadow-2xl">
+    <div className="min-h-screen modern-bg py-8">
+      <div className="max-w-5xl mx-auto p-8 glass-card rounded-xl shadow-2xl">
       {/* Back button */}
       <button
         onClick={() => navigate("/products")}
@@ -120,19 +196,39 @@ const MedicineDetailsPage = () => {
       </button>
 
       {/* Header */}
-      <div className="flex items-center space-x-4 border-b pb-4 mb-4">
-        <FlaskConicalIcon className="h-10 w-10 text-primary flex-shrink-0" />
-        <h1 className="text-3xl font-bold text-gray-800">{details.name}</h1>
+      <div className="flex items-center justify-between border-b pb-4 mb-4">
+        <div className="flex items-center space-x-4">
+          <FlaskConicalIcon className="h-10 w-10 text-primary flex-shrink-0" />
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">{details.name}</h1>
+            {(details.rating || details.reviews) && (
+              <div className="flex items-center space-x-2 mt-1">
+                {details.rating && (
+                  <div className="flex items-center">
+                    <span className="text-yellow-400 text-lg">★</span>
+                    <span className="ml-1 text-sm font-medium text-gray-700">{details.rating}</span>
+                  </div>
+                )}
+                {details.reviews && (
+                  <>
+                    <span className="text-gray-400">|</span>
+                    <span className="text-sm text-gray-600">{details.reviews} reviews</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Main Content */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Image + controls */}
         <div className="flex flex-col items-center md:col-span-1">
-          {(details.image_url || details.image) ? (
+          {(details.image || details.imageUrl) ? (
             <img
-              src={details.image_url || details.image}
-              alt={details.name}
+              src={details.image || details.imageUrl}
+              alt={details.name || "Medicine"}
               className="w-40 h-auto object-cover rounded-lg shadow-md mb-4"
               onError={(e) => {
                 e.currentTarget.onerror = null;
@@ -162,7 +258,7 @@ const MedicineDetailsPage = () => {
             <button onClick={handleAddToCart} className="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90 transition-all font-semibold">
               Add to Cart
             </button>
-            <button onClick={handleOrderNow} className="w-full bg-secondary text-white py-2 rounded-lg hover:bg-secondary/90 transition-all font-semibold">
+            <button onClick={handleOrderNow} className="w-full bg-gradient-to-r from-primary to-secondary text-white py-2 rounded-lg hover:from-primary/90 hover:to-secondary/90 transition-all font-semibold">
               Order Now
             </button>
           </div>
@@ -170,29 +266,83 @@ const MedicineDetailsPage = () => {
 
         {/* Details */}
         <div className="md:col-span-2 space-y-4">
-          <p><strong>Brand:</strong> {details.brand_name || "N/A"}</p>
-          <p><strong>Manufacturer:</strong> {details.manufacturer || "N/A"}</p>
-          <p><strong>Pack Size / Per Unit:</strong> {details.perUnit || details.pack || "N/A"}</p>
-          <p><strong>Composition:</strong> <span className="italic">{details.composition || "N/A"}</span></p>
-          <p><strong>Description:</strong> {details.description || "No description available."}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              {(details.brand || details.manufacturer || details.packSize || details.productForm || details.countryOfOrigin || details.packaging) && (
+                <>
+                  {details.brand && (
+                    <p className="mb-1"><strong>Brand:</strong> {details.brand}</p>
+                  )}
+                  {details.manufacturer && (
+                    <p className="mb-1"><strong>Manufacturer:</strong> {details.manufacturer}</p>
+                  )}
+                  {details.packSize && (
+                    <p className="mb-1"><strong>Pack Size:</strong> {`${details.packSize}${details.saleUnit ? ` ${details.saleUnit}` : ''}`}</p>
+                  )}
+                  {details.productForm && (
+                    <p className="mb-1"><strong>Product Form:</strong> {details.productForm}</p>
+                  )}
+                  {details.countryOfOrigin && (
+                    <p className="mb-1"><strong>Country of Origin:</strong> {details.countryOfOrigin}</p>
+                  )}
+                  {details.packaging && (
+                    <p className="mb-1"><strong>Packaging:</strong> {details.packaging}</p>
+                  )}
+                </>
+              )}
+            </div>
+            <div>
+              {(details.composition || details.molecules || details.productId || details.prescriptionRequired) && (
+                <>
+                  {details.composition && (
+                    <p className="mb-1"><strong>Composition:</strong> <span className="italic">{details.composition}</span></p>
+                  )}
+                  {details.molecules && (
+                    <p className="mb-1"><strong>Molecules:</strong> <span className="italic">{details.molecules}</span></p>
+                  )}
+                  {details.prescriptionRequired && (
+                    <p className="mb-1">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                        ⚠️ Prescription Required
+                      </span>
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+          
+          {details.description && details.description.trim() && (
+            <div className="mt-4 pt-4 border-t">
+              <p><strong>Description:</strong></p>
+              <p className="text-gray-700 mt-2">{details.description}</p>
+            </div>
+          )}
 
           <div className="mt-4 p-4 bg-green-50 rounded-lg shadow-inner">
             <p className="font-semibold text-lg text-green-700 mb-2">Price Details (per unit)</p>
 
             <p><strong>MRP:</strong> <span className="text-red-600 line-through">{!isNaN(mrp) ? formatINR(mrp) : "N/A"}</span></p>
 
-            <p><strong>Regular Price:</strong> <span className="text-green-700 font-bold">{!isNaN(regularPrice) ? formatINR(regularPrice) : "N/A"}</span></p>
-
-            <p><strong>Member / Discount Price:</strong> <span className="text-primary font-bold">{!isNaN(memberPrice) ? formatINR(memberPrice) : ( !isNaN(details.discountPrice) ? formatINR(parseNumber(details.discountPrice)) : "N/A" )}</span></p>
+            <p><strong>Selling Price:</strong> <span className="text-primary font-bold text-xl">{!isNaN(sellingPrice) ? formatINR(sellingPrice) : "N/A"}</span></p>
+            
+            <div className="mt-2 p-2 bg-secondary/10 rounded-lg border border-secondary/20">
+              <p className="text-secondary font-semibold text-sm">🎉 Special Offer: {savingsPercent}% OFF on MRP!</p>
+            </div>
 
             <div className="mt-3">
               <p><strong>Selected unit price:</strong> {perUnitDisplay}</p>
               <p><strong>Total for {quantity}:</strong> { !isNaN(totalEffective) ? formatINR(totalEffective) : "N/A" }</p>
 
               {savingsPerUnit > 0 && (
-                <p className="text-sm text-green-700 mt-1">
-                  You save {formatINR(savingsPerUnit)} per unit ({savingsPercent}%); total savings {formatINR(savingsTotal)}
-                </p>
+                <div className="mt-2 p-3 bg-success/10 rounded-lg border border-success/20">
+                  <p className="text-sm text-success font-semibold">
+                    💰 You save {formatINR(savingsPerUnit)} per unit ({savingsPercent}% OFF)
+                  </p>
+                  <p className="text-sm text-success/80">
+                    Total savings for {quantity} units: {formatINR(savingsTotal)}
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -228,6 +378,7 @@ const MedicineDetailsPage = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

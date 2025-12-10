@@ -4,9 +4,13 @@ import "./App.css";
 
 // Layouts
 import MainLayout from "./layouts/MainLayout";
+import Navbar from "./components/Navbar";
 
 // Context Providers
 import { CartProvider } from "./context/CartContext";
+
+// Components
+import DeliveryStatusModal from "./components/ui/DeliveryStatusModal";
 
 // Direct import for essential pages
 import SimpleHomePage from "./pages/SimpleHomePage";
@@ -59,6 +63,7 @@ function App() {
     <CartProvider className="overflow-hidden">
       <BrowserRouter>
         <Suspense fallback={<LoadingSpinner />}>
+          <Navbar />
           <Routes>
             <Route path="/" element={<MainLayout />}>
               {/* Main Pages */}
@@ -100,6 +105,9 @@ function App() {
             </Route>
           </Routes>
         </Suspense>
+        
+        {/* Global Components */}
+        <DeliveryStatusModal />
       </BrowserRouter>
     </CartProvider>
   );

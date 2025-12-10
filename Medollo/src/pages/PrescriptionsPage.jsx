@@ -3,44 +3,25 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { CloudArrowUpIcon, DocumentTextIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import PageTransition from '../components/ui/PageTransition';
+import { useCart } from '../context/CartContext';
 
 const PrescriptionsPage = () => {
   const [files, setFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const navigate = useNavigate();
   const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, success, error
-
-  // Past prescriptions 
-  const pastPrescriptions = [
-    { 
-      id: 1, 
-      name: 'General Checkup Prescription',
-      doctor: 'Dr. Sharma',
-      date: '2025-09-12',
-      status: 'delivered',
-      items: ['Paracetamol 500mg', 'Vitamin C', 'Multivitamin Tablets']
-    },
-    { 
-      id: 2, 
-      name: 'Fever Treatment',
-      doctor: 'Dr. Patel',
-      date: '2025-08-27',
-      status: 'processed',
-      items: ['Crocin Advance', 'Cough Syrup', 'ORS Powder']
-    },
-    { 
-      id: 3, 
-      name: 'Monthly Medication',
-      doctor: 'Dr. Kumar',
-      date: '2025-07-15',
-      status: 'delivered',
-      items: ['Metformin 500mg', 'Atorvastatin 10mg', 'Aspirin 75mg']
-    }
-  ];
+  const { isLoggedIn } = useCart();
 
   const handleDragEnter = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Check if user is logged in
+    if (!isLoggedIn) {
+      navigate('/login');
+      return;
+    }
+    
     setIsDragging(true);
   };
 
@@ -60,6 +41,12 @@ const PrescriptionsPage = () => {
     e.stopPropagation();
     setIsDragging(false);
     
+    // Check if user is logged in
+    if (!isLoggedIn) {
+      navigate('/login');
+      return;
+    }
+    
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const newFiles = Array.from(e.dataTransfer.files);
       handleFiles(newFiles);
@@ -68,6 +55,13 @@ const PrescriptionsPage = () => {
   };
 
   const handleFileSelect = (e) => {
+    // Check if user is logged in
+    if (!isLoggedIn) {
+      e.preventDefault();
+      navigate('/login');
+      return;
+    }
+    
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
       handleFiles(newFiles);
@@ -88,6 +82,12 @@ const PrescriptionsPage = () => {
   };
 
   const handleUpload = () => {
+    // Check if user is logged in
+    if (!isLoggedIn) {
+      navigate('/login');
+      return;
+    }
+    
     if (files.length === 0) return;
     
     setUploadStatus('uploading');
@@ -110,8 +110,7 @@ const PrescriptionsPage = () => {
         <div className="container mx-auto px-4">
           <h1 className="text-3xl font-bold mb-8 text-primary">Upload Prescriptions</h1>
           
-          <div className="grid md:grid-cols-5 gap-8">
-            <div className="md:col-span-3">
+          <div className="max-w-4xl mx-auto">
               <div className="bg-white p-6 rounded-lg shadow-md mb-6">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">Upload Your Prescription</h2>
                 <p className="text-gray-600 mb-6">
@@ -132,7 +131,9 @@ const PrescriptionsPage = () => {
                   <CloudArrowUpIcon className="h-12 w-12 mx-auto text-primary mb-4" />
                   <p className="text-lg font-medium mb-2">Drag & Drop your files here</p>
                   <p className="text-gray-500 mb-4">or</p>
-                  <label className="bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 cursor-pointer">
+                  <label 
+                    className="bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 cursor-pointer inline-block"
+                  >
                     Browse Files
                     <input
                       type="file"
@@ -140,6 +141,13 @@ const PrescriptionsPage = () => {
                       accept="image/*,.pdf"
                       className="hidden"
                       onChange={handleFileSelect}
+                      onClick={(e) => {
+                        if (!isLoggedIn) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          navigate('/login');
+                        }
+                      }}
                     />
                   </label>
                 </div>
@@ -227,47 +235,6 @@ const PrescriptionsPage = () => {
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="md:col-span-2">
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold mb-4 text-gray-800">Your Past Prescriptions</h2>
-                
-                <div className="space-y-4">
-                  {pastPrescriptions.map(prescription => (
-                    <div key={prescription.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-medium text-gray-800">{prescription.name}</h3>
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          prescription.status === 'delivered' 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {prescription.status === 'delivered' ? 'Delivered' : 'Processing'}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-500 mb-2">Dr: {prescription.doctor} • {prescription.date}</p>
-                      
-                      <div className="mt-3">
-                        <p className="text-xs font-medium text-gray-500 mb-1">Medicines:</p>
-                        <ul className="text-sm text-gray-700">
-                          {prescription.items.map((item, index) => (
-                            <li key={index} className="flex items-center">
-                              <span className="h-1.5 w-1.5 bg-primary rounded-full mr-2"></span>
-                              {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div className="mt-4 flex space-x-3">
-                        <button className="text-primary text-sm font-medium hover:underline">View Details</button>
-                        <button className="text-primary text-sm font-medium hover:underline">Reorder</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
               
               <div className="bg-primary/5 mt-6 p-6 rounded-lg border border-primary/20">
                 <h3 className="font-medium mb-2 text-primary">Need Assistance?</h3>
@@ -280,7 +247,6 @@ const PrescriptionsPage = () => {
                   Contact Support
                 </button>
               </div>
-            </div>
           </div>
         </div>
       </div>

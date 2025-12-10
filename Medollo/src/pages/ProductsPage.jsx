@@ -42,96 +42,85 @@ const ProductsPage = () => {
   ]);
   const [allProducts, setAllProducts] = useState([]);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const [mobileSortDropdownOpen, setMobileSortDropdownOpen] = useState(false);
+  const sortDropdownRef = useRef(null);
+  const mobileSortDropdownRef = useRef(null);
 
-  // Fetch medicine data
-
-  
+  // Read search query from URL on mount
   useEffect(() => {
-    setLoading(true); 
+    const searchParams = new URLSearchParams(location.search);
+    const searchQuery = searchParams.get('search');
+    if (searchQuery) {
+      setSearchTerm(searchQuery);
+    }
+  }, [location.search]);
 
-    fetch(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/brands`)
+  // Fetch medicine data and categories
+  useEffect(() => {
+    setLoading(true);
+
+    // Fetch categories
+    fetch(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/medicine-details/categories`)
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch medicine data");
+        if (!res.ok) throw new Error("Failed to fetch categories");
         return res.json();
       })
       .then((data) => {
-        setMedicineData(data);
-
-        // Process categories
-        const brands = [...new Set(data.map((b) => b.brand_name))];
-        
-        const organizedCategories = [
-          { id: "all", name: "All Products", type: "special" },
-          { id: "popular", name: "Popular Brands", type: "special" },
-        ];
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach((letter) => {
-          const brandsStartingWithLetter = brands.filter((brand) =>
-            brand.startsWith(letter)
-          );
-          if (brandsStartingWithLetter.length > 0) {
-            organizedCategories.push({
-              id: `divider-${letter}`,
-              name: letter,
-              type: "divider",
-            });
-            brandsStartingWithLetter.forEach((brand) =>
-              organizedCategories.push({
-                id: brand,
-                name: brand,
-                type: "brand",
-              })
-            );
-          }
-        });
-        setCategories(organizedCategories);
-
-        // Process products
-        const finalProducts = data
-          .flatMap((brand, brandIndex) =>
-            brand.medicines.map((medicine, index) => ({
-              id: `med-${brandIndex}-${index}`,
-              name:
-                medicine.name
-                  ?.replace(" - MedPlus", "")
-                  .replace(" Online at b", "") || "Medicine",
-              image:
-                medicine.image_url ||
-                "https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine",
-              price: parseFloat(medicine.mrp) || 0,
-              discountPrice: parseFloat(medicine.regularPrice) || null,
-              discount:
-                medicine.mrp && medicine.regularPrice
-                  ? `${Math.round(
-                      (1 -
-                        parseFloat(medicine.regularPrice) /
-                          parseFloat(medicine.mrp)) *
-                        100
-                    )}%`
-                  : null,
-              description: medicine.composition || "Medicine",
-              rating: (Math.random() * (5 - 3.5) + 3.5).toFixed(1),
-              reviews: Math.floor(Math.random() * 200) + 5,
-              category: brand.brand_name,
-              stock: Math.floor(Math.random() * 100) + 5,
-              tags: [medicine.composition || "Medicine"],
-              perUnit: medicine.perUnit || "1 Unit/pack",
-              manufacturer: medicine.manufacturer || brand.brand_name,
-            }))
-          )
-          .filter((p) => p.price > 0 && p.name);
-
-        setAllProducts(finalProducts);
+        if (data.success) {
+          setCategories(data.categories);
+        }
       })
-      .catch((err) => console.error("Error fetching medicine data:", err))
-      .finally(() => setLoading(false));
+      .catch((err) => console.error("Error fetching categories:", err));
 
-    return () => {};
+    // Fetch products
+    fetchProducts();
   }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: productsPerPage.toString(),
+        category: activeCategory,
+        search: searchTerm,
+        sortBy: sortBy,
+        priceMin: priceRange[0].toString(),
+        priceMax: priceRange[1].toString()
+      });
+
+      const response = await fetch(
+        `${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/medicine-details/paginated?${params}`
+      );
+
+      if (!response.ok) throw new Error("Failed to fetch medicines");
+
+      const data = await response.json();
+
+      if (data.success) {
+        setProducts(data.data);
+        setTotalPages(data.pagination.totalPages);
+        setFilteredProductsCount(data.pagination.totalItems);
+      }
+    } catch (err) {
+      console.error("Error fetching medicines:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
   // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setShowSuggestions(false);
+      }
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
+        setSortDropdownOpen(false);
+      }
+      if (mobileSortDropdownRef.current && !mobileSortDropdownRef.current.contains(event.target)) {
+        setMobileSortDropdownOpen(false);
       }
     };
 
@@ -144,473 +133,88 @@ const ProductsPage = () => {
   // Handle search term changes for suggestions
   useEffect(() => {
     if (searchTerm.trim().length >= 2) {
-      const searchLower = searchTerm.toLowerCase().trim();
-      const matchedProducts = allProducts
-        .filter((p) => p.name.toLowerCase().includes(searchLower))
-        .slice(0, 10);
-
-      setSuggestions(matchedProducts);
-      setShowSuggestions(matchedProducts.length > 0);
+      fetchSearchSuggestions();
     } else {
       setSuggestions([]);
       setShowSuggestions(false);
     }
   }, [searchTerm]);
 
-  // Fetch products effect with pagination
-  // useEffect(() => {
-  //   setLoading(true);
+  const fetchSearchSuggestions = async () => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/medicine-details/search/suggestions?q=${encodeURIComponent(searchTerm)}`
+      );
 
-  //   setTimeout(() => {
-  //     let filteredProducts = [...allProducts];
-
-  //     // Filter by category
-  //     if (activeCategory !== "all") {
-        
-  //       if (activeCategory === "all") {
-  //         console.log(" Applying image URL-based sorting for All Products category");
-        
-  //         filteredProducts.sort((a, b) => {
-  //           const getImagePriority = (product) => {
-  //             const imageUrl = product.image;
-        
-  //             // 3 = lowest priority (null or placeholder)
-  //             if (
-  //               !imageUrl ||
-  //               imageUrl === null ||
-  //               imageUrl.trim() === "" ||
-  //               imageUrl === "https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine"
-  //             ) {
-  //               return 3;
-  //             }
-        
-  //             // 2 = medium priority (medplusmart.com)
-  //             if (imageUrl.startsWith("https://static2.medplusmart.com/")) {
-  //               return 2;
-  //             }
-        
-  //             // 1 = highest priority (valid normal images)
-  //             return 1;
-  //           };
-        
-  //           const priorityA = getImagePriority(a);
-  //           const priorityB = getImagePriority(b);
-        
-  //           // Sort by priority
-  //           if (priorityA !== priorityB) {
-  //             return priorityA - priorityB;
-  //           }
-        
-  //           // If same priority, preserve previous sort (like popularity, price, etc.)
-  //           return 0;
-  //         });
-        
-  //         // Optional: Debugging logs
-  //         const debugSample = filteredProducts.slice(0, 10).map(p => ({
-  //           name: p.name,
-  //           image: p.image,
-  //           priority: (() => {
-  //             const img = p.image;
-  //             if (!img || img === "" || img === "https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine") return 3;
-  //             if (img.startsWith("https://static2.medplusmart.com/")) return 2;
-  //             return 1;
-  //           })()
-  //         }));
-        
-  //         console.log("✅ Sorted by image priority sample:", debugSample);
-  //       }
-        
-  //     }
-
-  //     // Filter by price range
-  //     filteredProducts = filteredProducts.filter(
-  //       (p) =>
-  //         (p.discountPrice || p.price) >= priceRange[0] &&
-  //         (p.discountPrice || p.price) <= priceRange[1]
-  //     );
-
-  //     // Filter by search term
-  //     if (searchTerm.trim()) {
-  //       const searchLower = searchTerm.toLowerCase().trim();
-  //       filteredProducts = filteredProducts.filter(
-  //         (p) =>
-  //           p.name.toLowerCase().includes(searchLower) ||
-  //           p.description.toLowerCase().includes(searchLower) ||
-  //           (p.manufacturer &&
-  //             p.manufacturer.toLowerCase().includes(searchLower)) ||
-  //           p.tags.some((tag) => tag && tag.toLowerCase().includes(searchLower))
-  //       );
-  //     }
-
-  //     // Sort products
-  //     switch (sortBy) {
-  //       case "price-low":
-  //         filteredProducts.sort(
-  //           (a, b) =>
-  //             (a.discountPrice || a.price) - (b.discountPrice || b.price)
-  //         );
-  //         break;
-  //       case "price-high":
-  //         filteredProducts.sort(
-  //           (a, b) =>
-  //             (b.discountPrice || b.price) - (a.discountPrice || a.price)
-  //         );
-  //         break;
-  //       case "rating":
-  //         filteredProducts.sort((a, b) => b.rating - a.rating);
-  //         break;
-  //       case "newest":
-  //         // Just shuffle for demo purposes, in a real app you'd sort by date
-  //         filteredProducts.sort(() => Math.random() - 0.5);
-  //         break;
-  //       case "popularity":
-  //       default:
-  //         filteredProducts.sort((a, b) => b.reviews - a.reviews);
-  //         break;
-  //     }
-
-  //     // Apply image URL-based sorting for "All Products" category
-  //     if (activeCategory === "all") {
-  //       console.log("🖼️ Applying image URL-based sorting for All Products category");
-  //       console.log("📊 Total products to sort:", filteredProducts.length);
-        
-  //       // Log some sample image URLs for debugging
-  //       const sampleImages = filteredProducts.slice(0, 10).map(p => ({
-  //         name: p.name,
-  //         image: p.image,
-  //         priority: p.image ? (p.image.startsWith('https://static2.medplusmart.com/') ? 2 : (p.image === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine' ? 3 : 1)) : 3
-  //       }));
-  //       console.log("🔍 Sample image URLs:", sampleImages);
-        
-  //       filteredProducts.sort((a, b) => {
-  //         const getImagePriority = (product) => {
-  //           // The processed data uses 'image' field, not 'image_url'
-  //           const imageUrl = product.image;
-            
-  //           // Null or empty image URLs get lowest priority (3)
-  //           if (!imageUrl || imageUrl === null || imageUrl === '' || imageUrl === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine') {
-  //             return 3;
-  //           }
-            
-  //           // Images starting with "@https://static2.medplusmart.com/medplusmart.com/" get middle priority (2)
-  //           if (imageUrl.startsWith('https://static2.medplusmart.com/medplusmart.com/')) {
-  //             return 2;
-  //           }
-            
-  //           // All other images get highest priority (1)
-  //           return 1;
-  //         };
-
-  //         const priorityA = getImagePriority(a);
-  //         const priorityB = getImagePriority(b);
-
-  //         // If priorities are different, sort by priority
-  //         if (priorityA !== priorityB) {
-  //           return priorityA - priorityB;
-  //         }
-
-  //         // If priorities are the same, maintain the existing sort order
-  //         // This preserves the current sorting (popularity, price, etc.)
-  //         return 0;
-  //       });
-
-  //       // Log sorting results for debugging
-  //       const priorityCounts = {
-  //         normal: 0,
-  //         medplusmart: 0,
-  //         null: 0
-  //       };
-        
-  //       filteredProducts.slice(0, 20).forEach((product, index) => {
-  //         const imageUrl = product.image;
-  //         if (!imageUrl || imageUrl === null || imageUrl === '' || imageUrl === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine') {
-  //           priorityCounts.null++;
-  //         } else if (imageUrl.startsWith('@https://static2.medplusmart.com/')) {
-  //           priorityCounts.medplusmart++;
-  //         } else {
-  //           priorityCounts.normal++;
-  //         }
-  //       });
-        
-  //       console.log("📊 Image sorting results (first 20 products):", priorityCounts);
-        
-  //       // Log the first few products after sorting to verify
-  //       const afterSortSample = filteredProducts.slice(0, 5).map(p => ({
-  //         name: p.name,
-  //         image: p.image,
-  //         priority: p.image ? (p.image.startsWith('@https://static2.medplusmart.com/') ? 2 : (p.image === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine' ? 3 : 1)) : 3
-  //       }));
-  //       console.log("✅ After sorting (first 5 products):", afterSortSample);
-  //     }
-
-  //     // Store total count for pagination
-  //     setFilteredProductsCount(filteredProducts.length);
-
-  //     // Calculate total pages
-  //     const calculatedTotalPages = Math.ceil(
-  //       filteredProducts.length / productsPerPage
-  //     );
-  //     setTotalPages(calculatedTotalPages);
-
-  //     // Reset to first page if filters change
-  //     if (currentPage > calculatedTotalPages) {
-  //       setCurrentPage(1);
-  //     }
-
-  //     // Paginate results
-  //     const startIndex = (currentPage - 1) * productsPerPage;
-  //     const paginatedProducts = filteredProducts.slice(
-  //       startIndex,
-  //       startIndex + productsPerPage
-  //     );
-
-  //     setProducts(paginatedProducts);
-  //     setLoading(false);
-  //   }, 300); // Faster response time
-  // }, [
-  //   activeCategory,
-  //   priceRange,
-  //   sortBy,
-  //   searchTerm,
-  //   currentPage,
-  //   allProducts,
-  // ]);
-  useEffect(() => {
-    setLoading(true);
-
-    setTimeout(() => {
-      let filteredProducts = [...allProducts];
-     
-      // Filter by category
-      if (activeCategory !== "all") {
-        if (activeCategory === "popular") {
-          // For popular brands, show products with high review count
-          filteredProducts = filteredProducts
-            .sort((a, b) => b.reviews - a.reviews)
-            .slice(0, 100);
-        } else if (!activeCategory.startsWith("divider-")) {
-          filteredProducts = filteredProducts.filter(
-            (p) => p.category === activeCategory
-          );
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setSuggestions(data.suggestions);
+          setShowSuggestions(data.suggestions.length > 0);
         }
       }
-
-      // Filter by price range
-      filteredProducts = filteredProducts.filter(
-        (p) =>
-          (p.discountPrice || p.price) >= priceRange[0] &&
-          (p.discountPrice || p.price) <= priceRange[1]
-      );
-
-      // Filter by search term
-      if (searchTerm.trim()) {
-        const searchLower = searchTerm.toLowerCase().trim();
-        filteredProducts = filteredProducts.filter(
-          (p) =>
-            p.name.toLowerCase().includes(searchLower) ||
-            p.description.toLowerCase().includes(searchLower) ||
-            (p.manufacturer &&
-              p.manufacturer.toLowerCase().includes(searchLower)) ||
-            p.tags.some((tag) => tag && tag.toLowerCase().includes(searchLower))
-        );
-      }
-
-      // Sort products
-      switch (sortBy) {
-        case "price-low":
-          filteredProducts.sort(
-            (a, b) =>
-              (a.discountPrice || a.price) - (b.discountPrice || b.price)
-          );
-          break;
-        case "price-high":
-          filteredProducts.sort(
-            (a, b) =>
-              (b.discountPrice || b.price) - (a.discountPrice || a.price)
-          );
-          break;
-        case "rating":
-          filteredProducts.sort((a, b) => b.rating - a.rating);
-          break;
-        case "newest":
-          // Just shuffle for demo purposes, in a real app you'd sort by date
-          filteredProducts.sort(() => Math.random() - 0.5);
-          break;
-        case "popularity":
-        default:
-          filteredProducts.sort((a, b) => b.reviews - a.reviews);
-          break;
-      }
-      // Apply image URL-based sorting for "All Products" category
-      // if (activeCategory === "all") {
-      //   console.log(" Applying image URL-based sorting for All Products category");
-      //   console.log("📊 Total products to sort:", filteredProducts.length);
-        
-      //   // Log some sample image URLs for debugging
-      //   const sampleImages = filteredProducts.slice(0, 10).map(p => ({
-      //     name: p.name,
-      //     image: p.image,
-      //     priority: p.image ? (p.image.startsWith('@https://static2.medplusmart.com/') ? 2 : (p.image === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine' ? 3 : 1)) : 3
-      //   }));
-      //   console.log("🔍 Sample image URLs:", sampleImages);
-        
-      //   filteredProducts.sort((a, b) => {
-      //     const getImagePriority = (product) => {
-      //       // The processed data uses 'image' field, not 'image_url'
-      //       const imageUrl = product.image;
-            
-      //       // Null or empty image URLs get lowest priority (3)
-      //       if (!imageUrl || imageUrl === null || imageUrl === '' || imageUrl === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine') {
-      //         return 3;
-      //       }
-            
-      //       // Images starting with "@https://static2.medplusmart.com/medplusmart.com/" get middle priority (2)
-      //       if (imageUrl.startsWith('@https://static2.medplusmart.com/medplusmart.com/')) {
-      //         return 2;
-      //       }
-            
-      //       // All other images get highest priority (1)
-      //       return 1;
-      //     };
-
-      //     const priorityA = getImagePriority(a);
-      //     const priorityB = getImagePriority(b);
-
-      //     // If priorities are different, sort by priority
-      //     if (priorityA !== priorityB) {
-      //       return priorityA - priorityB;
-      //     }
-
-      //     // If priorities are the same, maintain the existing sort order
-      //     // This preserves the current sorting (popularity, price, etc.)
-      //     return 0;
-      //   });
-
-      //   // Log sorting results for debugging
-      //   const priorityCounts = {
-      //     normal: 0,
-      //     medplusmart: 0,
-      //     null: 0
-      //   };
-        
-      //   filteredProducts.slice(0, 20).forEach((product, index) => {
-      //     const imageUrl = product.image;
-      //     if (!imageUrl || imageUrl === null || imageUrl === '' || imageUrl === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine') {
-      //       priorityCounts.null++;
-      //     } else if (imageUrl.startsWith('@https://static2.medplusmart.com/')) {
-      //       priorityCounts.medplusmart++;
-      //     } else {
-      //       priorityCounts.normal++;
-      //     }
-      //   });
-        
-      //   console.log("📊 Image sorting results (first 20 products):", priorityCounts);
-        
-      //   // Log the first few products after sorting to verify
-      //   const afterSortSample = filteredProducts.slice(0, 5).map(p => ({
-      //     name: p.name,
-      //     image: p.image,
-      //     priority: p.image ? (p.image.startsWith('@https://static2.medplusmart.com/') ? 2 : (p.image === 'https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine' ? 3 : 1)) : 3
-      //   }));
-      //   console.log("✅ After sorting (first 5 products):", afterSortSample);
-      // }
-      if (activeCategory === "all") {
-        console.log(" Applying image URL-based sorting for All Products category");
-       
-        
-      
-        filteredProducts.sort((a, b) => {
-          const getImagePriority = (product) => {
-            const imageUrl = product.image;
-      
-            // 3 = lowest priority (null or placeholder)
-            if (
-              !imageUrl ||
-              imageUrl === null ||
-              imageUrl.trim() === "" ||
-              imageUrl === "https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine"
-            ) {
-              return 3;
-            }
-      
-            // 2 = medium priority (medplusmart.com)
-            if (imageUrl.startsWith("https://static2.medplusmart.com/")) {
-              return 2;
-            }
-      
-            // 1 = highest priority (valid normal images)
-            return 1;
-          };
-      
-          const priorityA = getImagePriority(a);
-          const priorityB = getImagePriority(b);
-      
-          // Sort by priority
-          if (priorityA !== priorityB) {
-            return priorityA - priorityB;
-          }
-      
-          // If same priority, preserve previous sort (like popularity, price, etc.)
-          return 0;
-        });
-      
-        // Optional: Debugging logs
-        const debugSample = filteredProducts.slice(0, 10).map(p => ({
-          name: p.name,
-          image: p.image,
-          priority: (() => {
-            const img = p.image;
-            if (!img || img === "" || img === "https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine") return 3;
-            if (img.startsWith("https://static2.medplusmart.com/")) return 0;
-            return 1;
-          })()
-        }));
-      
-        console.log("✅ Sorted by image priority sample:", debugSample);
-      }
-      
-
-      // Store total count for pagination
-      setFilteredProductsCount(filteredProducts.length);
-
-      // Calculate total pages
-      const calculatedTotalPages = Math.ceil(
-        filteredProducts.length / productsPerPage
-      );
-      setTotalPages(calculatedTotalPages);
-
-      // Reset to first page if filters change
-      if (currentPage > calculatedTotalPages) {
-        setCurrentPage(1);
-      }
-
-      // Paginate results
-      const startIndex = (currentPage - 1) * productsPerPage;
-      const paginatedProducts = filteredProducts.slice(
-        startIndex,
-        startIndex + productsPerPage
-      );
-
-      setProducts(paginatedProducts);
-      setLoading(false);
-    }, 300); // Faster response time
-  }, [
-    activeCategory,
-    priceRange,
-    sortBy,
-    searchTerm,
-    currentPage,
-    allProducts,
-  ]);
-
-  // Toggle filters visibility (for mobile)
-  const toggleFilters = () => {
-    setFiltersOpen(!filtersOpen);
+    } catch (err) {
+      console.error("Error fetching search suggestions:", err);
+    }
   };
+
+  // Fetch products when filters change
+  useEffect(() => {
+    fetchProducts();
+  }, [activeCategory, priceRange, sortBy, searchTerm, currentPage]);
+
+  // Handle window resize to sync filter states
+  useEffect(() => {
+    const handleResize = () => {
+      const isCurrentlyDesktop = window.innerWidth >= 1024;
+      setIsDesktop(isCurrentlyDesktop);
+      
+      // When switching from desktop to mobile, close mobile filters
+      if (!isCurrentlyDesktop && filtersOpen) {
+        setFiltersOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    // Set initial state
+    setIsDesktop(window.innerWidth >= 1024);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [filtersOpen]);
+
+  // Toggle filters visibility (for mobile and desktop)
+  const toggleFilters = () => {
+    if (isDesktop) {
+      // Desktop: toggle sidebar
+      setDesktopFiltersOpen(!desktopFiltersOpen);
+    } else {
+      // Mobile: toggle slide-in panel
+      setFiltersOpen(!filtersOpen);
+    }
+  };
+
+  // Determine if filters are currently open
+  const filtersAreOpen = isDesktop ? desktopFiltersOpen : filtersOpen;
+
+  // Sort options
+  const sortOptions = [
+    { value: "popularity", label: "Popularity" },
+    { value: "price-low", label: "Price: Low to High" },
+    { value: "price-high", label: "Price: High to Low" },
+    { value: "rating", label: "Highest Rated" },
+    { value: "newest", label: "Newest Arrivals" },
+  ];
+
+  const handleSortChange = (value) => {
+    setSortBy(value);
+    setSortDropdownOpen(false);
+    setMobileSortDropdownOpen(false);
+  };
+
+  const currentSortLabel = sortOptions.find(opt => opt.value === sortBy)?.label || "Popularity";
 
   return (
     <PageTransition>
-      <div className="bg-gray-50 min-h-screen pb-12">
+      <div className="modern-bg min-h-screen pb-12">
         {/* Hero Section */}
         <div className="bg-primary text-white py-12">
           <div className="container mx-auto px-4">
@@ -666,7 +270,7 @@ const ProductsPage = () => {
                               {suggestion.name}
                             </div>
                             <div className="text-xs text-gray-500">
-                              {suggestion.manufacturer}
+                              {suggestion.brand} - ₹{suggestion.price}
                             </div>
                           </div>
                         </li>
@@ -677,37 +281,89 @@ const ProductsPage = () => {
               </div>
 
               <div className="hidden sm:flex items-center">
-                <label className="mr-2 text-sm text-gray-600">Sort by:</label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm"
-                >
-                  <option value="popularity">Popularity</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="rating">Highest Rated</option>
-                  <option value="newest">Newest Arrivals</option>
-                </select>
+                <label className="mr-2 text-sm font-medium text-gray-700">Sort by:</label>
+                <div className="relative" ref={sortDropdownRef}>
+                  <button
+                    onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
+                    className="flex items-center justify-between bg-white border-2 border-gray-300 rounded-lg py-2.5 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium text-gray-700 cursor-pointer hover:border-gray-400 transition-colors shadow-sm hover:shadow-md min-w-[180px]"
+                  >
+                    <span>{currentSortLabel}</span>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg 
+                        className={`h-5 w-5 text-gray-400 transition-transform ${sortDropdownOpen ? 'rotate-180' : ''}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </button>
+
+                  <AnimatePresence>
+                    {sortDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-200 rounded-lg shadow-lg overflow-hidden"
+                      >
+                        {sortOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => handleSortChange(option.value)}
+                            className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors hover:bg-primary hover:text-white ${
+                              sortBy === option.value
+                                ? 'bg-primary text-white'
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{option.label}</span>
+                              {sortBy === option.value && (
+                                <CheckIcon className="h-5 w-5" />
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             </div>
 
             <div className="flex items-center">
               <button
                 onClick={toggleFilters}
-                className="flex items-center bg-white px-3 py-2 border border-gray-300 rounded-md"
+                className={`flex items-center px-3 py-2 border rounded-md transition-colors ${
+                  filtersAreOpen
+                    ? "bg-primary text-white border-primary"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
               >
-                <AdjustmentsHorizontalIcon className="h-5 w-5 mr-1 text-gray-600" />
-                <span className="text-sm">Filters</span>
+                <AdjustmentsHorizontalIcon className="h-5 w-5 mr-1" />
+                <span className="text-sm">
+                  Filters{filtersAreOpen && <span className="ml-1 text-xs opacity-80"></span>}
+                </span>
               </button>
             </div>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Sidebar Filters - Desktop */}
-            <div className="hidden lg:block w-64 flex-shrink-0">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="font-medium text-lg mb-4">Categories</h3>
+            <AnimatePresence>
+              {desktopFiltersOpen && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                  className="hidden lg:block w-64 flex-shrink-0"
+                >
+                  <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="font-medium text-lg mb-4">Filters</h3>
                 <div className="space-y-1 max-h-96 overflow-y-auto pr-2">
                   {categories.map((category) => {
                     if (category.type === "divider") {
@@ -722,7 +378,8 @@ const ProductsPage = () => {
 
                     if (
                       category.type === "special" ||
-                      category.type === "brand"
+                      category.type === "productForm" ||
+                      category.type === "category"
                     ) {
                       return (
                         <button
@@ -731,13 +388,11 @@ const ProductsPage = () => {
                             setActiveCategory(category.id);
                             setCurrentPage(1);
                           }}
-                          className={`block w-full text-left py-1.5 px-3 rounded-md transition text-sm ${
-                            activeCategory === category.id
-                              ? "bg-primary text-white"
-                              : "hover:bg-gray-100 text-gray-700"
-                          } ${
-                            category.type === "special" ? "font-medium" : ""
-                          }`}
+                          className={`block w-full text-left py-1.5 px-3 rounded-md transition text-sm ${activeCategory === category.id
+                            ? "bg-primary text-white"
+                            : "hover:bg-gray-100 text-gray-700"
+                            } ${category.type === "special" ? "font-medium" : ""
+                            }`}
                         >
                           {category.name}
                         </button>
@@ -779,8 +434,10 @@ const ProductsPage = () => {
                     />
                   </div>
                 </div>
-              </div>
-            </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Mobile Filters - Slide in from left */}
             <AnimatePresence>
@@ -800,7 +457,7 @@ const ProductsPage = () => {
                     transition={{ type: "tween" }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <h3 className="font-medium text-lg mb-4">Categories</h3>
+                    <h3 className="font-medium text-lg mb-4">Filters</h3>
                     <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
                       {categories.map((category) => {
                         if (category.type === "divider") {
@@ -815,7 +472,8 @@ const ProductsPage = () => {
 
                         if (
                           category.type === "special" ||
-                          category.type === "brand"
+                          category.type === "productForm" ||
+                          category.type === "category"
                         ) {
                           return (
                             <button
@@ -825,13 +483,11 @@ const ProductsPage = () => {
                                 setCurrentPage(1); // Reset to first page
                                 toggleFilters();
                               }}
-                              className={`block w-full text-left py-1.5 px-3 rounded-md transition text-sm ${
-                                activeCategory === category.id
-                                  ? "bg-primary text-white"
-                                  : "hover:bg-gray-100 text-gray-700"
-                              } ${
-                                category.type === "special" ? "font-medium" : ""
-                              }`}
+                              className={`block w-full text-left py-1.5 px-3 rounded-md transition text-sm ${activeCategory === category.id
+                                ? "bg-primary text-white"
+                                : "hover:bg-gray-100 text-gray-700"
+                                } ${category.type === "special" ? "font-medium" : ""
+                                }`}
                             >
                               {category.name}
                             </button>
@@ -852,7 +508,7 @@ const ProductsPage = () => {
                         <input
                           type="range"
                           min="0"
-                          max="2000"
+                          max="20000"
                           step="100"
                           value={priceRange[0]}
                           onChange={(e) =>
@@ -906,21 +562,56 @@ const ProductsPage = () => {
             <div className="flex-1">
               {/* Mobile Sort - Select */}
               <div className="lg:hidden mb-4">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                >
-                  <option value="popularity">Sort by: Popularity</option>
-                  <option value="price-low">
-                    Sort by: Price - Low to High
-                  </option>
-                  <option value="price-high">
-                    Sort by: Price - High to Low
-                  </option>
-                  <option value="rating">Sort by: Highest Rated</option>
-                  <option value="newest">Sort by: Newest Arrivals</option>
-                </select>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Sort by</label>
+                <div className="relative" ref={mobileSortDropdownRef}>
+                  <button
+                    onClick={() => setMobileSortDropdownOpen(!mobileSortDropdownOpen)}
+                    className="flex items-center justify-between w-full bg-white border-2 border-gray-300 rounded-lg py-3 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium text-gray-700 cursor-pointer hover:border-gray-400 transition-colors shadow-sm hover:shadow-md"
+                  >
+                    <span>{currentSortLabel}</span>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg 
+                        className={`h-5 w-5 text-gray-400 transition-transform ${mobileSortDropdownOpen ? 'rotate-180' : ''}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </button>
+
+                  <AnimatePresence>
+                    {mobileSortDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-200 rounded-lg shadow-lg overflow-hidden"
+                      >
+                        {sortOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => handleSortChange(option.value)}
+                            className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors hover:bg-primary hover:text-white ${
+                              sortBy === option.value
+                                ? 'bg-primary text-white'
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{option.label}</span>
+                              {sortBy === option.value && (
+                                <CheckIcon className="h-5 w-5" />
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
 
               {/* Results summary */}
@@ -928,14 +619,13 @@ const ProductsPage = () => {
                 <p className="text-sm text-gray-600">
                   Showing {products.length} of {filteredProductsCount} products
                   {activeCategory !== "all" &&
-                  activeCategory !== "popular" &&
-                  !activeCategory.startsWith("divider-")
-                    ? ` in ${
-                        categories.find((c) => c.id === activeCategory)?.name
-                      }`
+                    activeCategory !== "popular" &&
+                    !activeCategory.startsWith("divider-")
+                    ? ` in ${categories.find((c) => c.id === activeCategory)?.name || "Selected Filter"
+                    }`
                     : activeCategory === "popular"
-                    ? " in Popular Brands"
-                    : ""}
+                      ? " in Popular Categories"
+                      : ""}
                   (Page {currentPage} of {totalPages})
                 </p>
               </div>
@@ -955,26 +645,30 @@ const ProductsPage = () => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ delay: index * 0.05 }}
-                        className="bg-white rounded-lg shadow-md overflow-hidden"
+                        className="glass-card rounded-lg shadow-md overflow-hidden"
                       >
-                        <Link
-                          className="block relative"
-                        >
-                          <div className="aspect-w-1 aspect-h-1">
+                        <div className="relative bg-white">
+                          <Link 
+                            to={`/medicine/${product.id}`}
+                            onClick={() => {
+                              setSelectedMedicine(product);
+                            }}
+                            className="block cursor-pointer"
+                          >
                             <img
                               src={product.image}
                               alt={product.name}
-                              className="object-contain w-full h-48 object-center bg-white p-2"
+                              className="object-contain w-full h-40 object-center p-3"
                               onError={(e) => {
                                 e.target.onerror = null;
                                 e.target.src =
                                   "https://placehold.co/300x300/FF385C/FFFFFF/png?text=Medicine";
                               }}
                             />
-                          </div>
-                          {product.discount && (
-                            <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md">
-                              {product.discount} OFF
+                          </Link>
+                          {product.discount && product.discount > 0 && (
+                            <div className="absolute top-2 left-2 bg-secondary text-white text-xs font-bold px-2 py-1 rounded-md">
+                              {product.discount}% OFF
                             </div>
                           )}
                           {product.perUnit && (
@@ -982,73 +676,84 @@ const ProductsPage = () => {
                               {product.perUnit}
                             </div>
                           )}
-                        </Link>
+                        </div>
 
-                        <div
-                          
-                          className="p-4"
-                        >
-                          <div onClick={() => {
-                            setSelectedMedicine(product); // store in context
-                            navigate(`/medicine/${product.id}`); // go to details page
-                          }}>
-                              <Link className="block">
-                            <h3  className="font-medium text-lg mb-1 hover:text-primary transition line-clamp-2">
+                        <div className="p-3">
+                          <Link 
+                            to={`/medicine/${product.id}`}
+                            onClick={() => {
+                              setSelectedMedicine(product);
+                            }}
+                            className="block cursor-pointer"
+                          >
+                            <h3 className="font-semibold text-sm mb-1 hover:text-primary transition line-clamp-2 text-gray-900">
                               {product.name}
                             </h3>
                           </Link>
-                          </div>
-                          
-                          <p className="text-xs text-gray-500 mb-1">
-                            {product.manufacturer}
-                          </p>
-                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                            {product.description}
-                          </p>
 
-                          <div className="flex items-center mb-3">
-                            <div className="flex items-center">
-                              <span className="text-yellow-400">★</span>
-                              <span className="ml-1 text-sm font-medium">
-                                {product.rating}
-                              </span>
-                            </div>
-                            <span className="mx-2 text-gray-300">|</span>
-                            <span className="text-sm text-gray-600">
-                              {product.reviews} reviews
-                            </span>
-                          </div>
+                          {product.brand && (
+                            <p className="text-xs text-gray-500 mb-1 mt-1">
+                              {product.brand}
+                            </p>
+                          )}
+                          {product.composition && (
+                            <p className="text-xs text-gray-600 mb-2 line-clamp-1">
+                              {product.composition}
+                            </p>
+                          )}
 
-                          <div className="flex items-center justify-between">
-                            <div>
-                              {product.discountPrice ? (
-                                <div className="flex flex-col">
-                                  <span className="text-lg font-bold text-primary">
-                                    ₹{product.discountPrice}
-                                  </span>
+                          {(product.rating || product.reviews) && (
+                            <div className="flex items-center mb-2">
+                              {product.rating && (
+                                <>
                                   <div className="flex items-center">
-                                    <span className="text-sm text-gray-500 line-through">
-                                      MRP: ₹{product.price}
+                                    <span className="text-yellow-400 text-sm">★</span>
+                                    <span className="ml-1 text-xs font-medium">
+                                      {product.rating}
                                     </span>
-                                    <span className="ml-2 text-xs text-green-600 font-semibold">
-                                      {product.discount} off
+                                  </div>
+                                  {product.reviews && (
+                                    <>
+                                      <span className="mx-2 text-gray-300">|</span>
+                                      <span className="text-xs text-gray-600">
+                                        {product.reviews}
+                                      </span>
+                                    </>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between mt-2">
+                            <div>
+                              {product.discount > 0 ? (
+                                <div className="flex flex-col">
+                                  <span className="text-base font-bold text-gray-900">
+                                    ₹{product.price?.toFixed(2) || product.price}
+                                  </span>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs text-gray-500 line-through">
+                                      ₹{product.mrp?.toFixed(2) || product.mrp}
+                                    </span>
+                                    <span className="text-xs text-success font-semibold">
+                                      {product.discount}% off
                                     </span>
                                   </div>
                                 </div>
                               ) : (
-                                <span className="text-lg font-bold text-primary">
-                                  ₹{product.price}
+                                <span className="text-base font-bold text-gray-900">
+                                  ₹{product.price?.toFixed(2) || product.price}
                                 </span>
                               )}
                             </div>
 
                             <div className="flex space-x-1">
                               <button
-                                className={`p-2 ${
-                                  addedToCart[product.id]
-                                    ? "bg-green-500 text-white"
-                                    : "text-primary hover:bg-primary hover:text-white"
-                                } 
+                                className={`p-2 ${addedToCart[product.id]
+                                  ? "bg-green-500 text-white"
+                                  : "text-primary hover:bg-primary hover:text-white"
+                                  } 
                                 rounded-full transition duration-300`}
                                 aria-label="Add to cart"
                                 onClick={(e) => {
@@ -1122,33 +827,33 @@ const ProductsPage = () => {
                   </AnimatePresence>
                 </div>
               )
-               : (
-                // No products found
-                <div className="bg-white p-8 rounded-lg text-center">
-                  <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <MagnifyingGlassIcon className="h-8 w-8 text-gray-400" />
+                : (
+                  // No products found
+                  <div className="bg-white p-8 rounded-lg text-center">
+                    <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                      <MagnifyingGlassIcon className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-xl font-medium mb-2">
+                      No Medicines Found
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      {searchTerm
+                        ? `We couldn't find any medicines matching "${searchTerm}". Try using different keywords or browsing categories.`
+                        : "Try adjusting your filter criteria or search for a specific medicine by name, brand, or composition."}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setActiveCategory("all");
+                        setPriceRange([0, 2000]);
+                        setSortBy("popularity");
+                        setSearchTerm("");
+                      }}
+                      className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+                    >
+                      Reset Filters
+                    </button>
                   </div>
-                  <h3 className="text-xl font-medium mb-2">
-                    No Medicines Found
-                  </h3>
-                  <p className="text-gray-500 mb-4">
-                    {searchTerm
-                      ? `We couldn't find any medicines matching "${searchTerm}". Try using different keywords or browsing categories.`
-                      : "Try adjusting your filter criteria or search for a specific medicine by name, brand, or composition."}
-                  </p>
-                  <button
-                    onClick={() => {
-                      setActiveCategory("all");
-                      setPriceRange([0, 2000]);
-                      setSortBy("popularity");
-                      setSearchTerm("");
-                    }}
-                    className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-                  >
-                    Reset Filters
-                  </button>
-                </div>
-              )
+                )
               }
 
               {/* Pagination - only show when there are products and more than one page */}
@@ -1160,11 +865,10 @@ const ProductsPage = () => {
                         setCurrentPage((prev) => Math.max(prev - 1, 1))
                       }
                       disabled={currentPage === 1}
-                      className={`px-3 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${
-                        currentPage === 1
-                          ? "text-gray-400 bg-gray-100 cursor-not-allowed"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }`}
+                      className={`px-3 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${currentPage === 1
+                        ? "text-gray-400 bg-gray-100 cursor-not-allowed"
+                        : "text-gray-700 hover:bg-gray-50"
+                        }`}
                     >
                       Previous
                     </button>
@@ -1173,11 +877,10 @@ const ProductsPage = () => {
                     {totalPages > 0 && (
                       <button
                         onClick={() => setCurrentPage(1)}
-                        className={`px-3 py-2 border-t border-b border-gray-300 text-sm font-medium ${
-                          currentPage === 1
-                            ? "bg-primary text-white"
-                            : "text-gray-700 hover:bg-gray-50"
-                        }`}
+                        className={`px-3 py-2 border-t border-b border-gray-300 text-sm font-medium ${currentPage === 1
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-50"
+                          }`}
                       >
                         1
                       </button>
@@ -1207,11 +910,10 @@ const ProductsPage = () => {
                           <button
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
-                            className={`px-3 py-2 border-t border-b border-gray-300 text-sm font-medium ${
-                              currentPage === pageNum
-                                ? "bg-primary text-white"
-                                : "text-gray-700 hover:bg-gray-50"
-                            }`}
+                            className={`px-3 py-2 border-t border-b border-gray-300 text-sm font-medium ${currentPage === pageNum
+                              ? "bg-primary text-white"
+                              : "text-gray-700 hover:bg-gray-50"
+                              }`}
                           >
                             {pageNum}
                           </button>
@@ -1231,11 +933,10 @@ const ProductsPage = () => {
                     {totalPages > 1 && (
                       <button
                         onClick={() => setCurrentPage(totalPages)}
-                        className={`px-3 py-2 border-t border-b border-gray-300 text-sm font-medium ${
-                          currentPage === totalPages
-                            ? "bg-primary text-white"
-                            : "text-gray-700 hover:bg-gray-50"
-                        }`}
+                        className={`px-3 py-2 border-t border-b border-gray-300 text-sm font-medium ${currentPage === totalPages
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-50"
+                          }`}
                       >
                         {totalPages}
                       </button>
@@ -1246,11 +947,10 @@ const ProductsPage = () => {
                         setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                       }
                       disabled={currentPage === totalPages}
-                      className={`px-3 py-2 rounded-r-md border border-gray-300 text-sm font-medium ${
-                        currentPage === totalPages
-                          ? "text-gray-400 bg-gray-100 cursor-not-allowed"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }`}
+                      className={`px-3 py-2 rounded-r-md border border-gray-300 text-sm font-medium ${currentPage === totalPages
+                        ? "text-gray-400 bg-gray-100 cursor-not-allowed"
+                        : "text-gray-700 hover:bg-gray-50"
+                        }`}
                     >
                       Next
                     </button>

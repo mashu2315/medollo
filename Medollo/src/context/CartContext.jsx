@@ -35,32 +35,7 @@ export const CartProvider = ({ children }) => {
   }, [cartItems]);
 
   // Add item to cart - now requires authentication
-//  const addToCart = (product, quantity = 1) => {
-//   if (!isLoggedIn) {
-//     return false;
-//   }
 
-//   // Determine unique identifier safely
-//   const productId = product.id || product._id || product.name;
-
-//   setCartItems((prevItems) => {
-//     const existingItemIndex = prevItems.findIndex(
-//       (item) => (item.id || item._id || item.name) === productId
-//     );
-
-//     if (existingItemIndex >= 0) {
-//       // Update quantity of existing item
-//       const updatedItems = [...prevItems];
-//       updatedItems[existingItemIndex].quantity += quantity;
-//       return updatedItems;
-//     } else {
-//       // Add new unique item
-//       return [...prevItems, { ...product, id: productId, quantity }];
-//     }
-//   });
-
-//   return true;
-// };
 const addToCart = (product, quantity = 1) => {
   if (!isLoggedIn) {
     return false;

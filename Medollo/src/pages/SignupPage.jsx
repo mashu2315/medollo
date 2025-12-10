@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { EyeIcon, EyeSlashIcon, CheckCircleIcon, XCircleIcon, ArrowLeftIcon, UserPlusIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
@@ -9,7 +10,7 @@ import { useCart } from '../context/CartContext';
 const SignupPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useCart();
+  const { login, isLoggedIn } = useCart();
   
   // Get returnUrl from query parameters if available
   const params = new URLSearchParams(location.search);
@@ -39,6 +40,11 @@ const SignupPage = () => {
     { name: 'number', label: 'One number', valid: /[0-9]/.test(formData.password) },
     { name: 'special', label: 'One special character', valid: /[^a-zA-Z0-9]/.test(formData.password) },
   ];
+    useEffect(() => {
+    if (isLoggedIn) {
+      navigate('/'); // or whatever your dashboard route is
+    }
+  }, [isLoggedIn, navigate]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

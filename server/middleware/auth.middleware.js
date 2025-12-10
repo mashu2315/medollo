@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
 
-exports.protect = async (req, res, next) => {
+const protect = async (req, res, next) => {
   let token;
   
   // Check if token exists in headers
@@ -54,7 +54,7 @@ exports.protect = async (req, res, next) => {
 };
 
 // Grant access to specific roles
-exports.authorize = (...roles) => {
+const authorize = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
@@ -64,4 +64,9 @@ exports.authorize = (...roles) => {
     }
     next();
   };
+};
+
+module.exports = {
+  protect,
+  authorize
 };

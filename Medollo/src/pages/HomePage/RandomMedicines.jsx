@@ -4,9 +4,12 @@ import {
   ShoppingCartIcon,
   HeartIcon,
   ArrowRightIcon,
+  PlusIcon,
+  MinusIcon,
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 import { useMedicine } from "../../context/MedicineContext";
+import { useCart } from "../../context/CartContext";
 
 // Animation variants for Framer Motion
 const containerVariants = {
@@ -23,44 +26,32 @@ const RandomMedicines = () => {
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [quantities, setQuantities] = useState({});
   const navigate = useNavigate();
   const { setSelectedMedicine } = useMedicine();
+  const { addToCart, isLoggedIn, toggleCart } = useCart();
 
   useEffect(() => {
     const fetchRandomMedicines = async () => {
       setLoading(true);
       setError(null);
       try {
+        // Fetch random medicines from the new API
         const response = await fetch(
-          `${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/random/med`
+          `${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/medicine-details/paginated?page=1&limit=8&sortBy=name`
         );
         if (!response.ok)
           throw new Error(`HTTP error! Status: ${response.status}`);
         const data = await response.json();
-
-        // Keep same structure as /api/medicines
-        setMedicines(
-          data.map((med) => ({
-            _id: med._id,
-            name: med.name,
-            brand_name: med.brand_name,
-            product_url: med.product_url || null,
-            image_url:
-              med.imageUrl ||
-              med.image_url ||
-              "https://placehold.co/160x160/FEE2E2/DC2626?text=No+Image",
-            mrp: med.mrp || null,
-            regularPrice: med.regularPrice || null,
-            memberPrice: med.memberPrice || null,
-            manufacturer: med.manufacturer || null,
-            perUnit: med.perUnit || null,
-            composition: med.composition || null,
-            pack_size: med.pack_size || null,
-            description: med.description || null,
-            scraped_at: med.scraped_at || null,
-            suggestions: med.suggestions || [],
-          }))
-        );
+        if (data.success) {
+          setMedicines(data.data);
+          // Initialize quantities
+          const initialQuantities = {};
+          data.data.forEach(med => {
+            initialQuantities[med.id] = 0;
+          });
+          setQuantities(initialQuantities);
+        }
       } catch (err) {
         console.error("Error fetching random medicines:", err);
         setError("Failed to load random medicines. Please try again later.");
@@ -70,6 +61,27 @@ const RandomMedicines = () => {
     };
     fetchRandomMedicines();
   }, []);
+
+  const handleQuantityChange = (medicineId, change) => {
+    setQuantities(prev => ({
+      ...prev,
+      [medicineId]: Math.max(0, (prev[medicineId] || 0) + change)
+    }));
+  };
+
+  const handleAddToCart = (medicine) => {
+    if (!isLoggedIn) {
+      navigate('/login');
+      return;
+    }
+
+    const quantity = quantities[medicine.id] || 1;
+    if (quantity > 0) {
+      addToCart(medicine, quantity);
+      setQuantities(prev => ({ ...prev, [medicine.id]: 0 }));
+      toggleCart(true); // Open cart sidebar
+    }
+  };
 
   if (loading)
     return (
@@ -99,47 +111,89 @@ const RandomMedicines = () => {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
       >
         {medicines.map((med) => (
-          <motion.div
-            key={med._id}
-            variants={itemVariants}
-            whileHover={{ y: -3 }}
-            className="bg-white rounded-md overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer"
-            onClick={() => {
-              setSelectedMedicine(med); // Save full details in context
-              navigate(`/medicine/${med._id}`);
-            }}
-          >
-            <img
-              src={med.image_url}
-              alt={med.name}
-              className="w-full h-28 object-cover"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src =
-                  "https://placehold.co/160x160/FEE2E2/DC2626?text=No+Image";
+              <motion.div
+                key={med.id}
+                variants={itemVariants}
+                whileHover={{ y: -2 }}
+                className="glass-card rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all border border-white/20"
+              >
+            {/* Product Image */}
+            <div 
+              className="relative cursor-pointer"
+              onClick={() => {
+                setSelectedMedicine(med);
+                navigate(`/medicine/${med.id}`);
               }}
-            />
-            <div className="p-2">
-              <h3 className="font-medium text-sm mb-0.5 line-clamp-1">
+            >
+              <img
+                src={med.image}
+                alt={med.name}
+                className="w-full h-32 object-contain bg-gray-50 p-2"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "https://placehold.co/160x160/FEE2E2/DC2626?text=No+Image";
+                }}
+              />
+                  {med.discount > 0 && (
+                    <div className="absolute top-2 left-2 bg-secondary text-white text-xs px-2 py-1 rounded-full font-semibold">
+                      {med.discount}% OFF
+                    </div>
+                  )}
+            </div>
+
+            {/* Product Details */}
+            <div className="p-3">
+              <h3 className="font-semibold hover:cursor-pointer hover:text-primary text-sm mb-1 line-clamp-2 text-gray-900" onClick={() => {
+                setSelectedMedicine(med);
+                navigate(`/medicine/${med.id}`);
+              }}>
                 {med.name}
               </h3>
-              <p className="text-xs text-gray-500 mb-0.5">{med.brand_name}</p>
-              <div className="flex items-center mb-1.5">
-                <span className="text-sm font-bold text-primary mr-1">
-                  ₹{med.regularPrice || med.memberPrice || "N/A"}
+              <p className="text-xs text-gray-500 mb-2">{med.brand}</p>
+              
+              {/* Price */}
+              <div className="flex items-center mb-3">
+                <span className="text-sm font-bold text-gray-900">
+                  ₹{med.price}
                 </span>
-                {med.mrp && (
-                  <span className="text-xs text-gray-500 line-through">
+                {med.mrp && med.mrp > med.price && (
+                  <span className="text-xs text-gray-500 line-through ml-2">
                     ₹{med.mrp}
                   </span>
                 )}
               </div>
-              <button className="w-full bg-secondary hover:bg-secondary/90 text-white py-1 text-xs rounded transition-colors">
-                Add to Cart
-              </button>
+
+              {/* Quantity Controls - Modern Style */}
+              {quantities[med.id] > 0 ? (
+                <div className="flex items-center justify-between bg-primary/10 border border-primary/20 rounded-lg p-2">
+                  <button
+                    onClick={() => handleQuantityChange(med.id, -1)}
+                    className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/80 transition-colors"
+                  >
+                    <MinusIcon className="h-3 w-3" />
+                  </button>
+                  <span className="text-sm font-semibold text-primary">
+                    {quantities[med.id]}
+                  </span>
+                  <button
+                    onClick={() => handleQuantityChange(med.id, 1)}
+                    className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/80 transition-colors"
+                  >
+                    <PlusIcon className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleAddToCart(med)}
+                  className="w-full bg-primary hover:bg-primary/90 text-white py-2 text-sm font-medium rounded-lg transition-colors flex items-center justify-center"
+                >
+                  <PlusIcon className="h-4 w-4 mr-1" />
+                  Add
+                </button>
+              )}
             </div>
           </motion.div>
         ))}

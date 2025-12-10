@@ -34,7 +34,6 @@ router.post('/', protect, async (req, res) => {
     const existingMedicine = await UserMedicine.findOne({
       user: req.user.id,
       'medicine.name': medicine.name,
-      'medicine.brand_name': medicine.brand_name,
       status: 'active'
     });
     

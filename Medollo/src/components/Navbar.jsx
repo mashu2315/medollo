@@ -7,6 +7,8 @@ import {
   ShoppingCartIcon,
   UserIcon,
   MagnifyingGlassIcon,
+  
+  CameraIcon
 } from "@heroicons/react/24/outline";
 import { useCart } from "../context/CartContext";
 import { useMedicine } from "../context/MedicineContext";
@@ -21,6 +23,8 @@ const Navbar = () => {
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
   const cartRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const mobileSearchInputRef = useRef(null);
   const { setSelectedMedicine } = useMedicine();
   // Get cart and login state from context
   const { cartItemsCount, isLoggedIn } = useCart();
@@ -63,10 +67,8 @@ const Navbar = () => {
   };
 
   const navItems = [
-    { name: "Home", path: "/" },
+    { name: "Be a Vendor", path: "/vendors" },
     { name: "Products", path: "/products" },
-    { name: "Prescriptions", path: "/prescriptions" },
-    { name: "Be a Vendor", path: '/vendors'},
     { name: "About Us", path: "/about" },
     { name: "Contact", path: "/contact" },
   ];
@@ -78,13 +80,46 @@ const Navbar = () => {
     }
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/search/medicines?query=${value}`
+        `${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/medicine-details/search/suggestions?q=${encodeURIComponent(value.trim())}`
       );
       const data = await res.json();
-      
-      setResults(data);
+      if (data.success && data.suggestions) {
+        // Format the suggestions to match expected format
+        const formattedResults = data.suggestions.map(item => ({
+          _id: item.id, // Use id from backend as _id for navigation
+          id: item.id, // Also include id field
+          name: item.name,
+          brand: item.brand,
+          manufacturer: item.manufacturer,
+          price: item.price,
+          image: item.image,
+          composition: item.composition,
+          molecules: item.molecules
+        }));
+        setResults(formattedResults);
+      } else {
+        setResults([]);
+      }
     } catch (err) {
       console.error("Search failed", err);
+      setResults([]);
+    }
+  };
+
+  const handleSearchIconClick = (e, isMobile = false) => {
+    e.preventDefault();
+    const currentQuery = query.trim();
+    const inputRef = isMobile ? mobileSearchInputRef : searchInputRef;
+
+    if (currentQuery.length > 0) {
+      // If there's text, navigate to products page with search query
+      setResults([]);
+      navigate(`/products?search=${encodeURIComponent(currentQuery)}`);
+    } else {
+      // If no text, focus the input field
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
     }
   };
 
@@ -93,44 +128,86 @@ const Navbar = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ type: "spring", stiffness: 100 }}
-      className="bg-white shadow-md sticky top-0 z-50"
+      className="glass-card shadow-md sticky top-0 z-50 border-b border-white/20"
     >
-      <div className="container-custom py-4">
+      <div className="py-4 px-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link to="/" className="flex items-center">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.2 }}
+            <h1
+              className="text-4xl font-extrabold tracking-tight"
+              style={{
+                background:
+                  "linear-gradient(135deg, #7E22CE, #A21CAF, #C026D3, #E879F9)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
             >
-              <h1 className="text-2xl font-bold text-primary">Medollo</h1>
-            </motion.div>
+              Medollo
+            </h1>
           </Link>
+
+          {/* Delivery in 10 minutes + location */}
+          <div className="hidden sm:flex flex-col leading-tight ml-3 cursor-pointer select-none">
+            <span className="text-base font-extrabold text-gray-800">
+              Delivery in 10 minutes{" "}
+            </span>
+            <span className="text-primary font-semibold hover:underline">
+              B-62, Sector-A, south city,Pune
+            </span>
+          </div>
+
           {/* Search Bar - visible on medium screens and up */}
           <div className="hidden md:block flex-grow max-w-md mx-4">
-            <form className="relative">
+            <form 
+              className="relative"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (query.trim().length > 0) {
+                  handleSearchIconClick(e);
+                }
+              }}
+            >
               <input
+                ref={searchInputRef}
                 type="text"
                 placeholder="Search for medicines, products..."
                 value={query}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="w-full py-2 px-4 pr-10 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full py-2 px-4 pr-20 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && query.trim().length > 0) {
+                    e.preventDefault();
+                    handleSearchIconClick(e);
+                  }
+                }}
               />
-              <button
-                type="submit"
-                className="absolute right-0 top-0 mt-2 mr-3 text-gray-400 hover:text-primary"
-              >
-                <MagnifyingGlassIcon className="h-5 w-5" />
-              </button>
+              <div className="absolute right-0 top-0 mt-2 mr-3 flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={(e) => handleSearchIconClick(e, false)}
+                  className="text-gray-400 hover:text-primary transition-colors cursor-pointer"
+                >
+                  <MagnifyingGlassIcon className="h-5 w-5" />
+                </button>
+                <Link
+                  to="/prescriptions"
+                  className="text-gray-400 hover:text-primary transition-colors"
+                  title="Upload Prescription"
+                >
+                  <CameraIcon className="h-5 w-5" />
+                </Link>
+              </div>
               {/* 🔽 SEARCH RESULTS DROPDOWN */}
               {results.length > 0 && (
-                <div className="absolute left-0 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                <div className="absolute left-0 w-full mt-2 glass-card border border-white/20 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
                   {results.map((item, index) => (
                     <div
                       key={index}
                       // use _id or id from backend
                       onClick={() => {
-                         // Debug
+                        console.log("Navigating to:", item); // Debug
                         if (!item._id) {
                           console.error("Missing _id for item:", item);
                           return;
@@ -144,8 +221,13 @@ const Navbar = () => {
                     >
                       <div className="font-medium">{item.name}</div>
                       <div className="text-sm text-gray-500">
-                        {item.brand_name}
+                        {item.brand || "Medicine"}
                       </div>
+                      {item.price && (
+                        <div className="text-xs text-gray-400 mt-1">
+                          ₹{item.price}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -219,7 +301,7 @@ const Navbar = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-100"
+                    className="absolute right-0 mt-2 w-48 glass-card rounded-md shadow-lg py-1 z-50 border border-white/20"
                   >
                     {isLoggedIn ? (
                       <>
@@ -301,23 +383,48 @@ const Navbar = () => {
 
         {/* Mobile Search - visible on small screens only */}
         <div className="mt-4 md:hidden">
-          <form className="relative">
+          <form 
+            className="relative"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (query.trim().length > 0) {
+                handleSearchIconClick(e, true);
+              }
+            }}
+          >
             <input
+              ref={mobileSearchInputRef}
               type="text"
               placeholder="Search for medicines, products..."
               value={query}
               onChange={(e) => handleSearch(e.target.value)}
-              className="w-full py-2 px-4 pr-10 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="w-full py-2 px-4 pr-20 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && query.trim().length > 0) {
+                  e.preventDefault();
+                  handleSearchIconClick(e, true);
+                }
+              }}
             />
-            <button
-              type="submit"
-              className="absolute right-0 top-0 mt-2 mr-3 text-gray-400 hover:text-primary"
-            >
-              <MagnifyingGlassIcon className="h-5 w-5" />
-            </button>
+            <div className="absolute right-0 top-0 mt-2 mr-3 flex items-center space-x-2">
+              <Link
+                to="/prescriptions"
+                className="text-gray-400 hover:text-primary transition-colors"
+                title="Upload Prescription"
+              >
+                <CameraIcon className="h-5 w-5" />
+              </Link>
+              <button
+                type="button"
+                onClick={(e) => handleSearchIconClick(e, true)}
+                className="text-gray-400 hover:text-primary transition-colors cursor-pointer"
+              >
+                <MagnifyingGlassIcon className="h-5 w-5" />
+              </button>
+            </div>
             {/*  SEARCH RESULTS DROPDOWN */}
             {results.length > 0 && (
-              <div className="absolute left-0 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+              <div className="absolute left-0 w-full mt-2 glass-card border border-white/20 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
                 {results.map((item, index) => (
                   <Link
                     key={index}
@@ -335,8 +442,13 @@ const Navbar = () => {
                   >
                     <div className="font-medium">{item.name}</div>
                     <div className="text-sm text-gray-500">
-                      {item.brand_name}
+                      {item.brand || "Medicine"}
                     </div>
+                    {item.price && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        ₹{item.price}
+                      </div>
+                    )}
                   </Link>
                 ))}
               </div>
@@ -353,7 +465,7 @@ const Navbar = () => {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="lg:hidden bg-white border-t border-gray-200 shadow-lg"
+            className="lg:hidden glass-card border-t border-white/20 shadow-lg"
           >
             <div className="container-custom py-4">
               <nav className="flex flex-col space-y-2">

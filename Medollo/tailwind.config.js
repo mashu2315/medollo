@@ -7,10 +7,27 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "#FF385C",
-        secondary: "#24AEB1",
-        darkblue: "#001E42",
-        lightgray: "#F5F5F5",
+        primary: "#4F46E5", // Indigo-600
+        secondary: "#EC4899", // Pink-500
+        darkblue: "#1E1B4B", // Indigo-900
+        lightgray: "#F8FAFC", // Slate-50
+        success: "#10B981", // Emerald-500
+        warning: "#F59E0B", // Amber-500
+        error: "#EF4444", // Red-500
+        info: "#3B82F6", // Blue-500
+        accent: "#8B5CF6", // Violet-500
+        neutral: {
+          50: "#FAFAFA",
+          100: "#F5F5F5",
+          200: "#E5E5E5",
+          300: "#D4D4D4",
+          400: "#A3A3A3",
+          500: "#737373",
+          600: "#525252",
+          700: "#404040",
+          800: "#262626",
+          900: "#171717",
+        }
       },
       fontSize: {
         'xxs': '0.625rem', // 10px

@@ -101,6 +101,82 @@ const HowItWorksSection = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
             {/* Left side: Steps */}
             <motion.div variants={itemVariants}>
+              {/* Download Buttons */}
+              <div className="mb-8 flex flex-col items-center md:items-start">
+                <h3 className="text-lg font-semibold text-darkblue mb-4 text-center md:text-left">Download Our App</h3>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start w-full">
+                  {/* Google Play Store Button */}
+                  <motion.a
+                    href="https://play.google.com/store"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group relative bg-gradient-to-br from-[#1a1a1a] via-[#2d2d2d] to-[#1a1a1a] text-white rounded-2xl px-5 py-4 flex items-center gap-3 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden min-w-[170px] max-w-[200px] justify-center md:justify-start border border-gray-700/50"
+                  >
+                    {/* Animated gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+                    
+                    {/* Subtle background pattern */}
+                    <div className="absolute inset-0 opacity-5">
+                      <div className="absolute top-2 left-2 w-8 h-8 border border-white rounded-full"></div>
+                      <div className="absolute bottom-2 right-2 w-6 h-6 border border-white rounded-full"></div>
+                    </div>
+                    
+                    {/* Google Play Icon */}
+                    <div className="relative z-10 flex-shrink-0">
+                      <svg className="w-9 h-9 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z" />
+                      </svg>
+                    </div>
+                    
+                    {/* Text content */}
+                    <div className="relative z-10 flex flex-col items-start min-w-0">
+                      <span className="text-[9px] text-gray-400 uppercase tracking-wider font-medium leading-none mb-1">Get it on</span>
+                      <span className="text-sm font-bold leading-tight text-white">Google Play</span>
+                    </div>
+                    
+                    {/* Bottom accent */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                  </motion.a>
+
+                  {/* Apple App Store Button */}
+                  <motion.a
+                    href="https://apps.apple.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group relative bg-gradient-to-br from-[#1a1a1a] via-[#2d2d2d] to-[#1a1a1a] text-white rounded-2xl px-5 py-4 flex items-center gap-3 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden min-w-[170px] max-w-[200px] justify-center md:justify-start border border-gray-700/50"
+                  >
+                    {/* Animated gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+                    
+                    {/* Subtle background pattern */}
+                    <div className="absolute inset-0 opacity-5">
+                      <div className="absolute top-2 left-2 w-8 h-8 border border-white rounded-full"></div>
+                      <div className="absolute bottom-2 right-2 w-6 h-6 border border-white rounded-full"></div>
+                    </div>
+                    
+                    {/* Apple Icon */}
+                    <div className="relative z-10 flex-shrink-0">
+                      <svg className="w-9 h-9 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.05,20.28C14.75,21.87 13.35,21.78 11.83,21.18C10.22,20.55 8.78,20.5 7.06,21.28C5.5,22 4.5,21.78 3.5,21.28C2.33,20.67 0.25,18.78 1.89,14.5C2.89,12.28 3.94,10.11 6.5,10.06C8.06,10.03 9,11 10.11,11.11C11.33,11.22 12.47,10.14 14,10.17C15.64,10.2 16.69,10.39 17.69,11.61C14.22,13.72 14.83,18.39 17.05,20.28M12,8C12.5,7.03 12.86,5.85 12.75,4.61C11.58,4.72 10.11,5.45 9.25,6.42C8.72,7.11 8.22,8.28 8.36,9.39C9.67,9.5 10.94,8.78 12,8Z" />
+                      </svg>
+                    </div>
+                    
+                    {/* Text content */}
+                    <div className="relative z-10 flex flex-col items-start min-w-0">
+                      <span className="text-[9px] text-gray-400 uppercase tracking-wider font-medium leading-none mb-1">Download on the</span>
+                      <span className="text-sm font-bold leading-tight text-white">App Store</span>
+                    </div>
+                    
+                    {/* Bottom accent */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                  </motion.a>
+                </div>
+              </div>
+
               <div className="space-y-8">
                 {stepItems.map((step) => (
                   <div 
@@ -330,7 +406,7 @@ const HowItWorksSection = () => {
                         <div className="bg-primary rounded-full w-32 h-32 flex items-center justify-center text-white font-bold">
                           <div>
                             <div className="text-5xl leading-none">25%</div>
-                            <div className="text-xl">OFF</div>
+                            <div className="text-xl text-center">OFF</div>
                           </div>
                         </div>
                       </div>
@@ -341,7 +417,7 @@ const HowItWorksSection = () => {
             </div>
           </motion.div>
 
-          <motion.div 
+          {/* <motion.div 
             variants={itemVariants}
             className="mt-12 text-center"
           >
@@ -354,7 +430,7 @@ const HowItWorksSection = () => {
             <p className="text-sm text-gray-500 mt-3">
               Available for iOS and Android devices
             </p>
-          </motion.div>
+          </motion.div> */}
         </motion.div>
       </div>
     </section>

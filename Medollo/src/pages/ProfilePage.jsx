@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -26,6 +27,16 @@ const ProfilePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [orderHistory, setOrderHistory] = useState([]);
   
+  // Profile update state
+  const [profileData, setProfileData] = useState({
+    name: '',
+    phone: '',
+    address: ''
+  });
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  
   // Password change state
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -35,6 +46,12 @@ const ProfilePage = () => {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  
+  // Account deletion state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   
   // Get the tab from URL query parameter if it exists
   useEffect(() => {
@@ -63,6 +80,13 @@ const ProfilePage = () => {
       try {
         const parsedUser = JSON.parse(storedUser);
         setUserData(parsedUser);
+        
+        // Initialize profile data for editing
+        setProfileData({
+          name: parsedUser.name || '',
+          phone: parsedUser.phone || '',
+          address: parsedUser.address || ''
+        });
         
         // Generate mock order history for demo
         generateMockOrderHistory();
@@ -104,6 +128,72 @@ const ProfilePage = () => {
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setProfileData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // Clear error when user starts typing
+    if (profileError) setProfileError('');
+    if (profileSuccess) setProfileSuccess('');
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setProfileError('');
+    setProfileSuccess('');
+    setIsUpdatingProfile(true);
+
+    // Validation
+    if (!profileData.name.trim()) {
+      setProfileError('Name is required');
+      setIsUpdatingProfile(false);
+      return;
+    }
+
+    if (!profileData.phone.trim()) {
+      setProfileError('Phone number is required');
+      setIsUpdatingProfile(false);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(profileData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setProfileSuccess('Profile updated successfully!');
+        
+        // Update user data in state and localStorage
+        const updatedUser = { ...userData, ...data.user };
+        setUserData(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        
+        // Clear success message after 5 seconds
+        setTimeout(() => {
+          setProfileSuccess('');
+        }, 5000);
+      } else {
+        setProfileError(data.message || 'Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Profile update error:', error);
+      setProfileError('Network error. Please try again.');
+    } finally {
+      setIsUpdatingProfile(false);
+    }
   };
 
   const handlePasswordChange = (e) => {
@@ -184,6 +274,61 @@ const ProfilePage = () => {
     } finally {
       setIsChangingPassword(false);
     }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword.trim()) {
+      setDeleteError('Please enter your password to confirm account deletion');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    setDeleteError('');
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/users/delete-account`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: deletePassword })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Account deleted successfully
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        logout();
+        navigate('/', { 
+          state: { 
+            message: 'Your account has been successfully deleted' 
+          } 
+        });
+      } else {
+        setDeleteError(data.message || 'Failed to delete account');
+      }
+    } catch (error) {
+      console.error('Account deletion error:', error);
+      setDeleteError('Network error. Please try again.');
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
+  const confirmDeleteAccount = () => {
+    setShowDeleteModal(true);
+    setDeletePassword('');
+    setDeleteError('');
+  };
+
+  const cancelDeleteAccount = () => {
+    setShowDeleteModal(false);
+    setDeletePassword('');
+    setDeleteError('');
   };
 
   if (isLoading) {
@@ -441,14 +586,39 @@ const ProfilePage = () => {
                         Update Profile
                       </h3>
                       
-                      <form className="space-y-4">
+                      {/* Success Message */}
+                      {profileSuccess && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-green-50 border-l-4 border-green-500 p-4 mb-4"
+                        >
+                          <p className="text-green-700 text-sm">{profileSuccess}</p>
+                        </motion.div>
+                      )}
+                      
+                      {/* Error Message */}
+                      {profileError && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-red-50 border-l-4 border-red-500 p-4 mb-4"
+                        >
+                          <p className="text-red-700 text-sm">{profileError}</p>
+                        </motion.div>
+                      )}
+                      
+                      <form onSubmit={handleUpdateProfile} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                             <input 
                               type="text"
+                              name="name"
+                              value={profileData.name}
+                              onChange={handleProfileChange}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                              defaultValue={userData?.name || ''}
+                              required
                             />
                           </div>
                           
@@ -456,17 +626,22 @@ const ProfilePage = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                             <input 
                               type="email"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                              defaultValue={userData?.email || ''}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                              value={userData?.email || ''}
+                              disabled
                             />
+                            <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
                           </div>
                           
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                             <input 
                               type="tel"
+                              name="phone"
+                              value={profileData.phone}
+                              onChange={handleProfileChange}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                              defaultValue={userData?.phone || ''}
+                              required
                             />
                           </div>
                           
@@ -474,18 +649,32 @@ const ProfilePage = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                             <input 
                               type="text"
+                              name="address"
+                              value={profileData.address}
+                              onChange={handleProfileChange}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                              defaultValue={userData?.address || ''}
+                              placeholder="Enter your address"
                             />
                           </div>
                         </div>
                         
                         <div className="flex justify-end">
                           <button 
-                            type="button"
-                            className="bg-primary text-white py-2 px-6 rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+                            type="submit"
+                            disabled={isUpdatingProfile}
+                            className={`bg-primary text-white py-2 px-6 rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 ${
+                              isUpdatingProfile ? 'opacity-70 cursor-not-allowed' : ''
+                            }`}
                           >
-                            Save Changes
+                            {isUpdatingProfile ? (
+                              <div className="flex items-center">
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Updating...
+                              </div>
+                            ) : 'Save Changes'}
                           </button>
                         </div>
                       </form>
@@ -597,6 +786,13 @@ const ProfilePage = () => {
                         >
                           Log Out
                         </button>
+                        
+                        <button 
+                          onClick={confirmDeleteAccount}
+                          className="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 flex justify-center items-center"
+                        >
+                          Delete Account
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -606,6 +802,83 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg max-w-md w-full p-6"
+          >
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0 w-10 h-10 mx-auto bg-red-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+            </div>
+            
+            <div className="text-center mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Account</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
+              </p>
+              
+              <div className="text-left">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter your password to confirm:
+                </label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
+                  placeholder="••••••••"
+                  autoFocus
+                />
+              </div>
+              
+              {deleteError && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-red-50 border-l-4 border-red-500 p-3 mt-4"
+                >
+                  <p className="text-red-700 text-sm">{deleteError}</p>
+                </motion.div>
+              )}
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={cancelDeleteAccount}
+                className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+                disabled={isDeletingAccount}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={isDeletingAccount || !deletePassword.trim()}
+                className={`flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 ${
+                  isDeletingAccount || !deletePassword.trim() ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {isDeletingAccount ? (
+                  <div className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Deleting...
+                  </div>
+                ) : 'Delete Account'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </PageTransition>
   );
 };

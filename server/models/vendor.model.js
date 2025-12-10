@@ -1,6 +1,4 @@
-
-
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const vendorSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -13,4 +11,5 @@ const vendorSchema = new mongoose.Schema({
 
 
 const Vendor = mongoose.model("Vendor", vendorSchema);
-export default Vendor;
+
+module.exports = Vendor;

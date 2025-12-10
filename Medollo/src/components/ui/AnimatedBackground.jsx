@@ -31,31 +31,7 @@ const AnimatedBackground = () => {
 
       
       {/* Animated dots */}
-      {/* {dots.map((dot) => (
-        <motion.div
-          key={dot.id}
-          className="absolute rounded-full bg-gradient-to-r from-cyan-400/50 to-blue-400/20"
-
-          style={{
-            left: `${dot.x}%`,
-            top: `${dot.y}%`,
-            width: `${dot.size*4}px`,
-            height: `${dot.size*4}px`,
-          }}
-          animate={{
-            y: [0, -20, 0],
-            x: [0, 10, 0],
-            opacity: [0.3, 0.8, 0.3],
-            scale: [1, 1.5, 1],
-          }}
-          transition={{
-            duration: dot.duration,
-            delay: dot.delay,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-      ))} */}
+      
       {dots.map((dot) => (
   <motion.div
     key={dot.id}
