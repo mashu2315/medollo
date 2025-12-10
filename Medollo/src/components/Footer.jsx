@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import {FaFacebook, FaTwitter, FaInstagram, FaLinkedin} from 'react-icons/fa';
+import {FaFacebook, FaTwitter, FaInstagram, FaLinkedin} from 'react-icons/fa'; 
 import Medical from '../assets/med.gif'
 const Footer = () => {
   const categories = [
