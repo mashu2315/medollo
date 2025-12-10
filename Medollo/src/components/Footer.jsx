@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import {FaFacebook, FaTwitter, FaInstagram, FaLinkedin} from 'react-icons/fa'; 
+import { FaFacebook, FaXTwitter, FaInstagram, FaLinkedin } from "react-icons/fa6";
 import Medical from '../assets/med.gif'
 const Footer = () => {
   const categories = [
@@ -31,7 +31,7 @@ const Footer = () => {
   ];
   const socialLinks = [
     { icon: <FaFacebook className="w-5 h-5" />, url: 'https://facebook.com' },
-    { icon: <FaTwitter className="w-5 h-5" />, url: 'https://twitter.com' },
+    { icon: <FaXTwitter className="w-5 h-5" />, url: 'https://twitter.com' },
     { icon: <FaInstagram className="w-5 h-5" />, url: 'https://instagram.com' },
     { icon: <FaLinkedin className="w-5 h-5" />, url: 'https://linkedin.com' }
   ];
