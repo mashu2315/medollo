@@ -9,7 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import PageTransition from "../components/ui/PageTransition";
 import { useCart } from "../context/CartContext";
-
+import Address from "../components/order/Address";
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cartItems, cartTotal, clearCart, isLoggedIn } = useCart();
@@ -432,7 +432,7 @@ const CheckoutPage = () => {
                   </div>
                   <div className="text-right">
                     <span className="font-medium">
-                      {cartTotal >= 999 ? "Free" : "₹99"}
+                      {cartTotal >= 499 ? "Free" : "₹99"}
                     </span>
                   </div>
                 </div>
