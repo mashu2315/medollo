@@ -73,9 +73,10 @@ const medicineSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  countryOfOrigin: {
-    type: String,
-    default: 'INDIA'
+  vendor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Vendor',
+    required: true
   },
   imageUrl: {
     type: String,

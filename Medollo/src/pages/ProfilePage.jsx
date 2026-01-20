@@ -26,6 +26,7 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(true);
   const [orderHistory, setOrderHistory] = useState([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   
   // Profile update state
   const [profileData, setProfileData] = useState({
@@ -88,8 +89,8 @@ const ProfilePage = () => {
           address: parsedUser.address || ''
         });
         
-        // Generate mock order history for demo
-        generateMockOrderHistory();
+        // Fetch real order history
+        fetchOrderHistory();
       } catch (error) {
         console.error('Failed to parse user data', error);
       }
@@ -98,31 +99,32 @@ const ProfilePage = () => {
     setIsLoading(false);
   }, [isLoggedIn, navigate]);
 
-  // Generate mock order history for demonstration
-  const generateMockOrderHistory = () => {
-    const mockOrders = [
-      {
-        id: 'ORD-2023-001',
-        date: '2023-11-15',
-        status: 'Delivered',
-        total: 1250.00,
-        items: [
-          { name: 'Multivitamin Tablets', quantity: 1, price: 450.00 },
-          { name: 'Blood Pressure Monitor', quantity: 1, price: 800.00 }
-        ]
-      },
-      {
-        id: 'ORD-2023-002',
-        date: '2023-12-03',
-        status: 'Processing',
-        total: 950.00,
-        items: [
-          { name: 'Diabetic Care Package', quantity: 1, price: 950.00 }
-        ]
+  // Fetch real order history from API
+  const fetchOrderHistory = async () => {
+    try {
+      setIsLoadingOrders(true);
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/orders`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const orders = await response.json();
+        setOrderHistory(orders);
+      } else {
+        console.error('Failed to fetch order history');
       }
-    ];
-    
-    setOrderHistory(mockOrders);
+    } catch (error) {
+      console.error('Error fetching order history:', error);
+    } finally {
+      setIsLoadingOrders(false);
+    }
   };
 
   const handleLogout = () => {
@@ -500,22 +502,32 @@ const ProfilePage = () => {
                 >
                   <h2 className="text-xl font-semibold mb-4">Order History</h2>
                   
-                  {orderHistory.length > 0 ? (
+                  {isLoadingOrders ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : orderHistory.length > 0 ? (
                     <div className="space-y-6">
                       {orderHistory.map(order => (
-                        <div key={order.id} className="bg-gray-50 rounded-lg overflow-hidden">
+                        <div key={order._id} className="bg-gray-50 rounded-lg overflow-hidden">
                           <div className="bg-gray-100 px-4 py-3 flex flex-wrap justify-between items-center">
                             <div>
-                              <span className="font-medium">{order.id}</span>
-                              <span className="text-gray-500 text-sm ml-4">Ordered on {order.date}</span>
+                              <span className="font-medium">{order.orderId}</span>
+                              <span className="text-gray-500 text-sm ml-4">
+                                Ordered on {new Date(order.createdAt).toLocaleDateString()}
+                              </span>
                             </div>
                             <div className="flex items-center">
                               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                order.status === 'Delivered' 
+                                order.orderStatus === 'delivered' 
                                   ? 'bg-green-100 text-green-800' 
-                                  : 'bg-yellow-100 text-yellow-800'
+                                  : order.orderStatus === 'placed'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : order.orderStatus === 'shipped'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-gray-100 text-gray-800'
                               }`}>
-                                {order.status}
+                                {order.orderStatus.charAt(0).toUpperCase() + order.orderStatus.slice(1)}
                               </span>
                             </div>
                           </div>
@@ -524,7 +536,9 @@ const ProfilePage = () => {
                             {order.items.map((item, index) => (
                               <div key={index} className="flex justify-between py-2 border-b border-gray-200 last:border-0">
                                 <div>
-                                  <p className="font-medium">{item.name}</p>
+                                  <p className="font-medium">
+                                    {item.medicine ? item.medicine.productName : 'Unknown Medicine'}
+                                  </p>
                                   <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
                                 </div>
                                 <p className="font-medium">₹{item.price.toFixed(2)}</p>
@@ -532,7 +546,7 @@ const ProfilePage = () => {
                             ))}
                             
                             <div className="mt-4 text-right">
-                              <p className="font-bold">Total: ₹{order.total.toFixed(2)}</p>
+                              <p className="font-bold">Total: ₹{order.totalAmount.toFixed(2)}</p>
                             </div>
                           </div>
                           

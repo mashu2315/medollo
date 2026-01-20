@@ -9,7 +9,7 @@ const PrescriptionsPage = () => {
   const [files, setFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const navigate = useNavigate();
-  const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, success, error
+  const [uploadStatus, setUploadStatus] = useState('idle'); 
   const { isLoggedIn } = useCart();
 
   const handleDragEnter = (e) => {

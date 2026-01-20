@@ -25,9 +25,11 @@ const SignupPage = lazy(() => import("./pages/SignupPage"));
 const CartPage = lazy(() => import("./pages/CartPage"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
 const PaymentSuccessPage = lazy(() => import("./pages/PaymentSuccessPage"));
+const OrderSuccessPage = lazy(() => import("./pages/OrderSuccessPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const MedicineDetailsPage = lazy(() => import("./pages/MedicineDetailsPage"));
 const VendorPage = lazy(() => import("./pages/VendorPage"));
+const VendorDashboard = lazy(() => import("./pages/VendorDashboard"));
 // Not Found Page
 const NotFoundPage = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 overflow-hidden">
@@ -85,12 +87,14 @@ function App() {
               <Route path="cart" element={<CartPage />} />
               <Route path="checkout" element={<CheckoutPage />} />
               <Route path="payment-success" element={<PaymentSuccessPage />} />
+              <Route path="order-success" element={<OrderSuccessPage />} />
 
               {/* User Account */}
               <Route path="profile" element={<ProfilePage />} />
 
               {/* Vendor Page  */}
               <Route path="vendors" element={<VendorPage />} />
+              <Route path="vendor-dashboard" element={<VendorDashboard />} />
 
               {/* 404 Route */}
               <Route path="*" element={<NotFoundPage />} />

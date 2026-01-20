@@ -1,17 +1,22 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircleIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import PageTransition from '../components/ui/PageTransition';
 
 const OrderSuccessPage = () => {
-  // Generate a random order ID
-  const orderId = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
+  const location = useLocation();
+  const { order, orderId } = location.state || {};
 
-  // Current date + 3 days for estimated delivery
-  const deliveryDate = new Date();
-  deliveryDate.setDate(deliveryDate.getDate() + 3);
-  const formattedDeliveryDate = deliveryDate.toLocaleDateString('en-US', {
+  // Fallback values if no order data is passed
+  const displayOrderId = order?.orderId || orderId || `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
+  const estimatedDelivery = order?.estimatedDelivery ? new Date(order.estimatedDelivery) : new Date();
+
+  if (!order?.estimatedDelivery) {
+    estimatedDelivery.setDate(estimatedDelivery.getDate() + 3);
+  }
+
+  const formattedDeliveryDate = estimatedDelivery.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -47,7 +52,7 @@ const OrderSuccessPage = () => {
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
                   <div>
                     <p className="text-sm text-gray-500">Order ID</p>
-                    <p className="font-medium text-gray-800">{orderId}</p>
+                    <p className="font-medium text-gray-800">{displayOrderId}</p>
                   </div>
                   
                   <div>

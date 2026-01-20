@@ -9,6 +9,7 @@ const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
 const userMedicineRoutes = require("./routes/userMedicine.routes");
 const vendorRoutes = require("./routes/vendor.routes.js");
+const orderRoutes = require("./routes/order.routes");
 
 const { connectDB } = require("./config/db");
 
@@ -35,6 +36,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/user-medicines", userMedicineRoutes);
 app.use("/api/medicine-details", medicineDetailsRoutes);
 app.use("/api/vendors", vendorRoutes);
+app.use("/api/orders", orderRoutes);
 
 // Health check route
 app.get("/api/health", (req, res) => {
